@@ -4,11 +4,9 @@ import com.nativelibs4java.opencl.*;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Test;
 
-import java.io.IOException;
+public class TestSimulation implements Simulation {
 
-public class TestSimulation {
-
-    public void run() throws IOException {
+    public void run() throws Exception {
         CLContext context = JavaCL.createBestContext();
         CLQueue queue = context.createDefaultQueue();
 
