@@ -4,7 +4,8 @@ public class SimulatorRunner {
 
     public static void main(String[] args) {
         try {
-            new TestSimulation().run();
+            new DpdSimulation().run();
+//            new DpdMockSimulation().run();
         } catch (Exception e) {
             e.printStackTrace();
         }
