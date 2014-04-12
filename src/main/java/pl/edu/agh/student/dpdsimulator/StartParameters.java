@@ -10,6 +10,7 @@ public interface StartParameters {
     float boltzmanConstant = (float) 1.3806488e-23;
     float density = 3.0f;
     float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
+    float lambda = 0.5f;
     float sigma = 0.075f;
     float gamma = sigma * sigma / 2 / boltzmanConstant / temperature;
 }

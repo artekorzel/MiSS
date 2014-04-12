@@ -18,8 +18,10 @@ public class DpdSimulation implements Simulation {
 
         Random random = new Random();
         CLBuffer<Float> positions = createVector(context, random, boxSize);
+        CLBuffer<Float> newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
         CLBuffer<Float> velocities = createVector(context, random, velocityInitRange);
-        CLBuffer<Float> forces = context.createBuffer(CLMem.Usage.InputOutput, Float.class, numberOfDroplets * 4);
+        CLBuffer<Float> newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
+        CLBuffer<Float> forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
 
         Pointer<Float> gaussianRandomsData = Pointer.allocateFloats(numberOfDroplets * numberOfDroplets);
         for (int i = 0; i < numberOfDroplets; ++i) {
@@ -42,8 +44,9 @@ public class DpdSimulation implements Simulation {
 
         Dpd dpdKernel = new Dpd(context);
         int[] globalSizes = new int[]{numberOfDroplets};
-        CLEvent initEvent = dpdKernel.initForces(queue, positions, velocities, forces, gaussianRandoms, time, timeDelta,
-                gamma, sigma, cutoffRadius, numberOfDroplets, repulsionParameter, globalSizes, null);
+        CLEvent initEvent = dpdKernel.initForces(queue, positions, newPositions, velocities, newVelocities, forces,
+                gaussianRandoms, time, timeDelta, lambda, gamma, sigma, cutoffRadius, numberOfDroplets,
+                repulsionParameter, globalSizes, null);
 
         Pointer<Float> outForces = forces.read(queue, initEvent);
 
@@ -65,7 +68,7 @@ public class DpdSimulation implements Simulation {
             valuesPointer.set(i + 2, nextRandomFloat(random, range));
             valuesPointer.set(i + 3, 0.0f);
         }
-        return context.createBuffer(CLMem.Usage.Input, valuesPointer);
+        return context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
 
     private float nextRandomFloat(Random random, float range) {
