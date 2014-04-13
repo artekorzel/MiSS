@@ -3,8 +3,8 @@ package pl.edu.agh.student.dpdsimulator;
 public interface StartParameters {
     int numberOfDroplets = 10;
     float timeDelta = 0.04f;
-    float cutoffRadius = 10.0f;
-    float boxSize = 10.0f;
+    float cutoffRadius = 0.1f;
+    float boxSize = 1.0f;
     float velocityInitRange = 1.0f;
     float temperature = 293.1f;
     float boltzmanConstant = (float) 1.3806488e-23;
