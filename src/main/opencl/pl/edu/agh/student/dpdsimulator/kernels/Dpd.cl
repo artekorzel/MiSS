@@ -62,12 +62,18 @@ float4 calculateRandomForce(__global float4* positions, __global float* gaussian
     return randomForce;
 }
 
-float4 calculateForce(__global float4* positions, __global float4* velocities, __global float* gaussianRandoms, float gamma,
-        float sigma, float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
+float4 calculateForce(__global float4* positions, __global float4* velocities, __global float* gaussianRandoms,
+        float gamma, float sigma, float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
 
-    float4 conservativeForce = calculateConservativeForce(positions, cutoffRadius, repulsionParameter, numberOfDroplets, dropletId);
-    float4 dissipativeForce = calculateDissipativeForce(positions, velocities, cutoffRadius, gamma, numberOfDroplets, dropletId);
-    float4 randomForce = calculateRandomForce(positions, gaussianRandoms, cutoffRadius, sigma, numberOfDroplets, dropletId);
+    float4 conservativeForce = calculateConservativeForce(positions,
+            cutoffRadius, repulsionParameter, numberOfDroplets, dropletId);
+
+    float4 dissipativeForce = calculateDissipativeForce(positions, velocities,
+            cutoffRadius, gamma, numberOfDroplets, dropletId);
+
+    float4 randomForce = calculateRandomForce(positions, gaussianRandoms,
+            cutoffRadius, sigma, numberOfDroplets, dropletId);
+
     return conservativeForce + dissipativeForce + randomForce;
 }
 
@@ -88,22 +94,25 @@ float4 normalizePosition(float4 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
 }
 
-__kernel void calculateNewPositionsAndPredictedVelocities(__global float4* positions, __global float4* velocities, __global float4* forces,
-        __global float4* newPositions, __global float4* predictedVelocities, float deltaTime, float lambda, int numberOfDroplets, float boxSize) {
+__kernel void calculateNewPositionsAndPredictedVelocities(__global float4* positions, __global float4* velocities,
+        __global float4* forces, __global float4* newPositions, __global float4* predictedVelocities,
+        float deltaTime, float lambda, int numberOfDroplets, float boxSize) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    float4 newPosition = positions[dropletId] + deltaTime * velocities[dropletId] + 0.5 * deltaTime * deltaTime * forces[dropletId];
+    float4 newPosition = positions[dropletId]
+            + deltaTime * velocities[dropletId] + 0.5 * deltaTime * deltaTime * forces[dropletId];
     newPositions[dropletId] = normalizePosition(newPosition, boxSize);
     predictedVelocities[dropletId] = velocities[dropletId] + lambda * deltaTime * forces[dropletId];
 }
 
-__kernel void calculateNewVelocities(__global float4* newPositions, __global float4* velocities, __global float4* predictedVelocities,
-        __global float4* newVelocities, __global float4* forces, __global float* gaussianRandoms, float deltaTime,
-        float lambda, float gamma, float sigma, float cutoffRadius, int numberOfDroplets, float repulsionParameter) {
+__kernel void calculateNewVelocities(__global float4* newPositions, __global float4* velocities,
+        __global float4* predictedVelocities, __global float4* newVelocities, __global float4* forces,
+        __global float* gaussianRandoms, float deltaTime, float lambda, float gamma, float sigma,
+        float cutoffRadius, int numberOfDroplets, float repulsionParameter) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
