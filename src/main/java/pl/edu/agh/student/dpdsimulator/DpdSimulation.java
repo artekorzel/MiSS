@@ -29,12 +29,14 @@ public class DpdSimulation implements Simulation {
     public void run() throws Exception {
         initData();
 
-        printVectors("\nBefore calculations", "pos", queue, positions);
+        printVectors("\nPositions", "pos", queue, positions);
+        printVectors("\nVelocities", "vel", queue, velocities);
 
         CLEvent simulationEndEvent = performSimulation();
 
         printVectors("\nPositions", "pos", queue, newPositions, simulationEndEvent);
         printVectors("\nVelocities", "vel", queue, newVelocities, simulationEndEvent);
+        printVectors("\nForces", "force", queue, forces, simulationEndEvent);
     }
 
     private void initData() throws IOException {
@@ -43,13 +45,14 @@ public class DpdSimulation implements Simulation {
 
         random = new Random();
         positions = createVector(boxSize);
-        newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
+        newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
         velocities = createVector(velocityInitRange);
-        predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * 4);
-        newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
-        forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 4);
+        predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * 3);
+        newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
+//        forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
+        forces = createVector(0.0f);
         gaussianRandoms = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * numberOfDroplets);
-        gaussianRandomsData = Pointer.allocateFloats(numberOfDroplets * numberOfDroplets);
+        gaussianRandomsData = Pointer.allocateFloats(numberOfDroplets * numberOfDroplets).order(context.getByteOrder());
 
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
@@ -57,13 +60,12 @@ public class DpdSimulation implements Simulation {
     }
 
     private CLBuffer<Float> createVector(float range) {
-        int numberOfCoordinates = numberOfDroplets * 4;
-        Pointer<Float> valuesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
-        for (int i = 0; i < numberOfCoordinates; i += 4) {
+        int numberOfCoordinates = numberOfDroplets * 3;
+        Pointer<Float> valuesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
+        for (int i = 0; i < numberOfCoordinates; i += 3) {
             valuesPointer.set(i, nextRandomFloat(range));
             valuesPointer.set(i + 1, nextRandomFloat(range));
             valuesPointer.set(i + 2, nextRandomFloat(range));
-            valuesPointer.set(i + 3, 0.0f);
         }
         return context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
@@ -76,6 +78,11 @@ public class DpdSimulation implements Simulation {
         CLEvent loopEndEvent = null;
         for (int i = 0, n = numberOfSteps - 1; i < n; ++i) {
             loopEndEvent = performSingleStep(dpdKernel, globalSizes, loopEndEvent);
+
+//            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
+//            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
+//            printVectors("\nForces", "force", queue, forces, loopEndEvent);
+
             swapPositions();
             swapVelocities();
         }
@@ -133,11 +140,10 @@ public class DpdSimulation implements Simulation {
         System.out.println(intro);
         Pointer<Float> out = buffer.read(queue, events);
         for (int i = 0; i < numberOfDroplets; i++) {
-            System.out.print(name + "[" + i + "] = (");
-            for (int j = 0; j < 3; j++) {
-                System.out.print(out.get(i * 4 + j) + ", ");
-            }
-            System.out.println(out.get(i * 4 + 3) + ")");
+            System.out.println(name + "[" + i + "] = ("
+                    + out.get(i * 3) + ", "
+                    + out.get(i * 3 + 1) + ", "
+                    + out.get(i * 3 + 2) + ")");
         }
     }
 }
