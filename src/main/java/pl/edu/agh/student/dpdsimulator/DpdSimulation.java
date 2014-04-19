@@ -11,6 +11,7 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 
 public class DpdSimulation implements Simulation {
 
+    public static final int VECTOR_SIZE = 4;
     private Random random;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
@@ -20,7 +21,7 @@ public class DpdSimulation implements Simulation {
     private CLBuffer<Float> forces;
     private CLBuffer<Float> gaussianRandoms;
     private Pointer<Float> gaussianRandomsData;
-    private float time;
+//    private float time;
     private CLContext context;
     private CLQueue queue;
     private Dpd dpdKernel;
@@ -45,33 +46,39 @@ public class DpdSimulation implements Simulation {
 
         random = new Random();
         positions = createVector(boxSize);
-        newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
+        newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         velocities = createVector(velocityInitRange);
-        predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * 3);
-        newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
-//        forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * 3);
-        forces = createVector(0.0f);
+        predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * VECTOR_SIZE);
+        newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
+        forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         gaussianRandoms = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * numberOfDroplets);
-        gaussianRandomsData = Pointer.allocateFloats(numberOfDroplets * numberOfDroplets).order(context.getByteOrder());
+        gaussianRandomsData = allocateFloats(numberOfDroplets * numberOfDroplets);
 
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
-        time = 0.0f;
+//        time = 0.0f;
     }
 
     private CLBuffer<Float> createVector(float range) {
-        int numberOfCoordinates = numberOfDroplets * 3;
-        Pointer<Float> valuesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
-        for (int i = 0; i < numberOfCoordinates; i += 3) {
+        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
+        Pointer<Float> valuesPointer = allocateFloats(numberOfCoordinates);
+        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             valuesPointer.set(i, nextRandomFloat(range));
             valuesPointer.set(i + 1, nextRandomFloat(range));
             valuesPointer.set(i + 2, nextRandomFloat(range));
+            for(int j = 3; j < VECTOR_SIZE; ++j) {
+                valuesPointer.set(i + j, 0.0f);
+            }
         }
         return context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
 
     private float nextRandomFloat(float range) {
         return random.nextFloat() * 2 * range - range;
+    }
+
+    private Pointer<Float> allocateFloats(int size) {
+        return Pointer.allocateFloats(size).order(context.getByteOrder());
     }
 
     private CLEvent performSimulation() {
@@ -109,19 +116,19 @@ public class DpdSimulation implements Simulation {
     }
 
     private CLEvent calculateForces(Dpd dpdKernel, int[] globalSizes, CLEvent gaussianRandomsEvent) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, gaussianRandoms, time, timeDelta,
-                lambda, gamma, sigma, cutoffRadius, numberOfDroplets, repulsionParameter, globalSizes, null, gaussianRandomsEvent);
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, gaussianRandoms, gamma, sigma,
+                cutoffRadius, repulsionParameter, numberOfDroplets, globalSizes, null, gaussianRandomsEvent);
     }
 
     private CLEvent calculateNewPositionsAndPredictedVelocities(Dpd dpdKernel, int[] globalSizes, CLEvent forcesEvent) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces, newPositions,
-                predictedVelocities, timeDelta, lambda, numberOfDroplets, boxSize, globalSizes, null, forcesEvent);
+                predictedVelocities, deltaTime, lambda, numberOfDroplets, boxSize, globalSizes, null, forcesEvent);
     }
 
     private CLEvent calculateNewVelocities(Dpd dpdKernel, int[] globalSizes, CLEvent newPositionsAndPredictedVelocitiesEvent) {
-        return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities,
-                newVelocities, forces, gaussianRandoms, timeDelta, lambda, gamma, sigma, cutoffRadius, numberOfDroplets,
-                repulsionParameter, globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
+        return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities,
+                forces, gaussianRandoms, deltaTime, gamma, sigma, cutoffRadius, repulsionParameter,
+                numberOfDroplets, globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
     }
 
     private void swapPositions() {
@@ -141,9 +148,9 @@ public class DpdSimulation implements Simulation {
         Pointer<Float> out = buffer.read(queue, events);
         for (int i = 0; i < numberOfDroplets; i++) {
             System.out.println(name + "[" + i + "] = ("
-                    + out.get(i * 3) + ", "
-                    + out.get(i * 3 + 1) + ", "
-                    + out.get(i * 3 + 2) + ")");
+                    + out.get(i * VECTOR_SIZE) + ", "
+                    + out.get(i * VECTOR_SIZE + 1) + ", "
+                    + out.get(i * VECTOR_SIZE + 2) + ")");
         }
     }
 }

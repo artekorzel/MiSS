@@ -2,8 +2,8 @@ package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
     int numberOfSteps = 1000;
-    int numberOfDroplets = 1000;
-    float timeDelta = 0.04f;
+    int numberOfDroplets = 100;
+    float deltaTime = 0.04f;
     float cutoffRadius = 0.1f;
     float boxSize = 1.0f;
     float velocityInitRange = 1.0f;

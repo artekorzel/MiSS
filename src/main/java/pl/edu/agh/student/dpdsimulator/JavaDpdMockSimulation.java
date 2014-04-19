@@ -95,12 +95,12 @@ public class JavaDpdMockSimulation implements Simulation {
 
     private void calculateNewPositionsAndPredictedVelocities(int dropletId) {
         JavaDpdMock.calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
-                predictedVelocities, timeDelta, lambda, boxSize, dropletId);
+                predictedVelocities, deltaTime, lambda, boxSize, dropletId);
     }
 
     private void calculateNewVelocities(int dropletId) {
         JavaDpdMock.calculateNewVelocities(newPositions, velocities, predictedVelocities,
-                newVelocities, forces, gaussianRandoms, timeDelta, gamma, sigma, cutoffRadius, numberOfDroplets,
+                newVelocities, forces, gaussianRandoms, deltaTime, gamma, sigma, cutoffRadius, numberOfDroplets,
                 repulsionParameter, dropletId);
     }
 
