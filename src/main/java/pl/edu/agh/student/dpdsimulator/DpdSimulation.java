@@ -11,7 +11,7 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 
 public class DpdSimulation implements Simulation {
 
-    public static final int VECTOR_SIZE = 4;
+    public static final int VECTOR_SIZE = 3;
     private Random random;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
@@ -66,9 +66,9 @@ public class DpdSimulation implements Simulation {
             valuesPointer.set(i, nextRandomFloat(range));
             valuesPointer.set(i + 1, nextRandomFloat(range));
             valuesPointer.set(i + 2, nextRandomFloat(range));
-            for(int j = 3; j < VECTOR_SIZE; ++j) {
-                valuesPointer.set(i + j, 0.0f);
-            }
+//            for(int j = 3; j < VECTOR_SIZE; ++j) {
+//                valuesPointer.set(i + j, 0.0f);
+//            }
         }
         return context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
