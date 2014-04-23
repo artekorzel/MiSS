@@ -1,10 +1,10 @@
 package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
-    int numberOfSteps = 1000;
+    int numberOfSteps = 10;
     int numberOfDroplets = 100;
     float deltaTime = 0.04f;
-    float cutoffRadius = 0.1f;
+    float cutoffRadius = 0.01f;
     float boxSize = 1.0f;
     float velocityInitRange = 1.0f;
     float temperature = 293.1f;
@@ -16,5 +16,6 @@ public interface StartParameters {
     float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
 }
 
-//dodac srednia predkosc czastek po kazdej iteracji
+//wyciagnac wyznaczanie sasiadow przed obliczenia??? - ale jak?
+//dodac srednia predkosc czastek po kazdej iteracji - w jaki sposob?
 //przeniesc moze petle glowna tez na kernel

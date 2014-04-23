@@ -27,16 +27,15 @@ float3 calculateForce(__global float3* positions, __global float3* velocities, _
             if(distanceValue < cutoffRadius) {
                 float weightRValue = weightR(distanceValue, cutoffRadius);
                 float weightDValue = weightD(distanceValue, cutoffRadius);
-                float3 normalizedVector = normalize(positions[neighbourId] - positions[dropletId]);
+                float3 normalizedPositionVector = normalize(positions[neighbourId] - positions[dropletId]);
 
-                conservativeForce += repulsionParameter * (1.0 - distanceValue / cutoffRadius)
-                        * normalize(positions[neighbourId] - positions[dropletId]);
+                conservativeForce += repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                dissipativeForce += gamma * weightDValue * normalizedVector
-                        * dot(normalizedVector, velocities[neighbourId] - velocities[dropletId]);
+                dissipativeForce += gamma * weightDValue * normalizedPositionVector
+                        * dot(normalizedPositionVector, velocities[neighbourId] - velocities[dropletId]);
 
-                randomForce += sigma * weightRValue * gaussianRandoms[neighbourId
-                        * numberOfDroplets + dropletId] * normalizedVector;
+                randomForce += sigma * weightRValue
+                        * gaussianRandoms[neighbourId * numberOfDroplets + dropletId] * normalizedPositionVector;
             }
         }
     }
