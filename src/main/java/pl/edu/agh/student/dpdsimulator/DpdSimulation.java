@@ -60,7 +60,7 @@ public class DpdSimulation implements Simulation {
         gaussianRandoms = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * numberOfDroplets);
         gaussianRandomsData = allocateFloats(numberOfDroplets * numberOfDroplets);
         partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, NUMBER_OF_REDUCTION_KERNELS);
-        output = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
+        output = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
@@ -98,7 +98,7 @@ public class DpdSimulation implements Simulation {
             writePositionsFile(i, queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
-            writeAvg(queue, globalSizes, output ,loopEndEvent);
+            writeAvg(queue, output ,loopEndEvent);
             swapPositions();
             swapVelocities();
         }
@@ -177,10 +177,10 @@ public class DpdSimulation implements Simulation {
         }
     }
 
-    private void writeAvg(CLQueue queue, int[] globalSizes, CLBuffer<Float> buffer, CLEvent loopEndEvent) {
+    private void writeAvg(CLQueue queue, CLBuffer<Float> buffer, CLEvent loopEndEvent) {
         CLEvent reductionEvent = dpdKernel.reductionVector(queue, newPositions, partialSums, output, numberOfSteps, globalSizes, localSizes, loopEndEvent);
         Pointer<Float> out = buffer.read(queue, reductionEvent);
-        System.out.println(out.get(0) + ", " + out.get(1) + ", " + out.get(2));
+        System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
     }
 }
 

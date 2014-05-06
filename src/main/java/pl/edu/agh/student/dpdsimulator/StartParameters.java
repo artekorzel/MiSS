@@ -2,7 +2,7 @@ package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
     int numberOfSteps = 10;
-    int numberOfDroplets = 100;
+    int numberOfDroplets = 10;
     float deltaTime = 0.04f;
     float cutoffRadius = 0.01f;
     float boxSize = 1.0f;

@@ -93,12 +93,12 @@ __kernel void reductionVector(__global float3* data, __global float3* partialSum
     
     partialSums[local_id] = data[get_global_id(0)];
     
-    for(int i = local_id+group_size; i > dataLength; i += group_size){
+    for(int i = local_id+group_size; i < dataLength; i += group_size){
         partialSums[local_id] += data[i];
     }
     
     if(local_id == 0){
-        output = 0;
+        output[0] = 0;
         for(int i = 0; i < group_size; i++){
             output[0] += partialSums[i];
         }
