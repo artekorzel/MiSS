@@ -4,6 +4,7 @@ import com.nativelibs4java.opencl.*;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 
@@ -86,7 +87,7 @@ public class DpdSimulation implements Simulation {
         for (int i = 0, n = numberOfSteps - 1; i < n; ++i) {
             loopEndEvent = performSingleStep(dpdKernel, globalSizes, loopEndEvent);
 
-//            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
+            writePositionsFile(i, queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
 
@@ -141,6 +142,20 @@ public class DpdSimulation implements Simulation {
         CLBuffer<Float> tmp = velocities;
         velocities = newVelocities;
         newVelocities = tmp;
+    }
+
+    private void writePositionsFile(int step, CLQueue queue, CLBuffer<Float> buffer, CLEvent... events) {
+        try (FileWriter writer = new FileWriter("../result" + step + ".csv")) {
+            Pointer<Float> out = buffer.read(queue, events);
+            writer.write("x, y, z\n");
+            for (int i = 0; i < numberOfDroplets; i++) {
+                writer.write(out.get(i * VECTOR_SIZE) + ","
+                        + out.get(i * VECTOR_SIZE + 1) + ","
+                        + out.get(i * VECTOR_SIZE + 2) + "\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void printVectors(String intro, String name, CLQueue queue, CLBuffer<Float> buffer, CLEvent... events) {

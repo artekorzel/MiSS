@@ -16,6 +16,11 @@ public interface StartParameters {
     float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
 }
 
-//wyciagnac wyznaczanie sasiadow przed obliczenia??? - ale jak?
-//dodac srednia predkosc czastek po kazdej iteracji - w jaki sposob?
+//wyciagnac wyznaczanie sasiadow przed obliczenia??? - ale jak? - chodzi o przeniesienie do pam lokalnej
+//dodac srednia predkosc czastek po kazdej iteracji - w jaki sposob? -redukcja, jest cos na stronie amd
 //przeniesc moze petle glowna tez na kernel
+
+//clinfo - zainstalowac sdk
+//wiecej czastek, ~10mln
+//przeniesienie generowania liczb na karte
+//rysowanie w 3d punktow na podstawie pozycji po kazdym kroku
