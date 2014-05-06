@@ -86,3 +86,22 @@ __kernel void calculateNewVelocities(__global float3* newPositions, __global flo
 
     newVelocities[dropletId] = velocities[dropletId] + 0.5 * deltaTime * (forces[dropletId] + predictedForce);
 }
+
+__kernel void reductionVector(__global float3* data, __global float3* partialSums, __global float3* output, int dataLength){
+    int local_id = get_local_id(0);
+    int group_size = get_local_size(0);
+    
+    partialSums[local_id] = data[get_global_id(0)];
+    
+    for(int i = local_id+group_size; i > dataLength; i += group_size){
+        partialSums[local_id] += data[i];
+    }
+    
+    if(local_id == 0){
+        output = 0;
+        for(int i = 0; i < group_size; i++){
+            output[0] += partialSums[i];
+        }
+        output[0] /= dataLength;
+    }
+}

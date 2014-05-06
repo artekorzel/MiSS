@@ -13,6 +13,7 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 public class DpdSimulation implements Simulation {
 
     public static final int VECTOR_SIZE = 3;
+    public static final int NUMBER_OF_REDUCTION_KERNELS = 10;
     private Random random;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
@@ -20,13 +21,17 @@ public class DpdSimulation implements Simulation {
     private CLBuffer<Float> predictedVelocities;
     private CLBuffer<Float> newVelocities;
     private CLBuffer<Float> forces;
-    private CLBuffer<Float> gaussianRandoms;
+    private CLBuffer<Float> gaussianRandoms;    
+    private CLBuffer<Float> partialSums;
+    private CLBuffer<Float> output;
+    
     private Pointer<Float> gaussianRandomsData;
 //    private float time;
     private CLContext context;
     private CLQueue queue;
     private Dpd dpdKernel;
     private int[] globalSizes;
+    private int[] localSizes;
 
     public void run() throws Exception {
         initData();
@@ -54,9 +59,12 @@ public class DpdSimulation implements Simulation {
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         gaussianRandoms = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * numberOfDroplets);
         gaussianRandomsData = allocateFloats(numberOfDroplets * numberOfDroplets);
-
+        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, NUMBER_OF_REDUCTION_KERNELS);
+        output = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
+        
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
+        localSizes = new int[]{NUMBER_OF_REDUCTION_KERNELS};
 //        time = 0.0f;
     }
 
@@ -90,7 +98,7 @@ public class DpdSimulation implements Simulation {
             writePositionsFile(i, queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
-
+            writeAvg(queue, globalSizes, output ,loopEndEvent);
             swapPositions();
             swapVelocities();
         }
@@ -167,6 +175,12 @@ public class DpdSimulation implements Simulation {
                     + out.get(i * VECTOR_SIZE + 1) + ", "
                     + out.get(i * VECTOR_SIZE + 2) + ")");
         }
+    }
+
+    private void writeAvg(CLQueue queue, int[] globalSizes, CLBuffer<Float> buffer, CLEvent loopEndEvent) {
+        CLEvent reductionEvent = dpdKernel.reductionVector(queue, newPositions, partialSums, output, numberOfSteps, globalSizes, localSizes, loopEndEvent);
+        Pointer<Float> out = buffer.read(queue, reductionEvent);
+        System.out.println(out.get(0) + ", " + out.get(1) + ", " + out.get(2));
     }
 }
 
