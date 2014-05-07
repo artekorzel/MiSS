@@ -1,8 +1,8 @@
 package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
-    int numberOfSteps = 1;
-    int numberOfDroplets = 16382;//max card alloc
+    int numberOfSteps = 200;
+    int numberOfDroplets = 1000;//max card alloc
     long numberOfDropletsLong = (long) numberOfDroplets;
     float deltaTime = 0.04f;
     float cutoffRadius = 0.01f;

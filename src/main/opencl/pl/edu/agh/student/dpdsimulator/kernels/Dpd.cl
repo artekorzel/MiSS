@@ -14,8 +14,8 @@ float3 normalizePosition(float3 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
 }
 
-int findIndexOfRandomNumber(int dropletId, int neighbourId) {
-    int i1, i2;
+long findIndexOfRandomNumber(int dropletId, int neighbourId) {
+    long i1, i2;
     if(dropletId <= neighbourId) {
         i1 = dropletId;
         i2 = neighbourId;
@@ -23,7 +23,7 @@ int findIndexOfRandomNumber(int dropletId, int neighbourId) {
         i1 = neighbourId;
         i2 = dropletId;
     }
-    return i1 * (i1 - 1) / 2 + i2 - 1;
+    return i1 / 2 * (i1 - 1) + i2 - 1;
 }
 
 float3 calculateForce(__global float3* positions, __global float3* velocities, __global float* gaussianRandoms,
@@ -103,15 +103,17 @@ __kernel void reductionVector(__global float3* data, __global float3* partialSum
     int local_id = get_local_id(0);
     int group_size = get_local_size(0);
     
-    partialSums[local_id] = data[get_local_id(0)];
-    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    for(int i = local_id+group_size; i < dataLength; i += group_size){
+    partialSums[local_id] = 0.0f;
+    
+    int i;
+    for(i = local_id; i < dataLength; i += group_size){
         partialSums[local_id] += data[i];
     }
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     if(local_id == 0){
         output[0] = 0;
-        for(int i = 0; i < group_size; i++){
+        int i;
+        for(i = 0; i < group_size; i++){
             output[0] += partialSums[i];
         }
         output[0] /= dataLength;
