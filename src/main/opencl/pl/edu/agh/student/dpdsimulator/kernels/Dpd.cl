@@ -14,6 +14,18 @@ float3 normalizePosition(float3 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
 }
 
+int findIndexOfRandomNumber(int dropletId, int neighbourId) {
+    int i1, i2;
+    if(dropletId <= neighbourId) {
+        i1 = dropletId;
+        i2 = neighbourId;
+    } else {
+        i1 = neighbourId;
+        i2 = dropletId;
+    }
+    return i1 * (i1 - 1) / 2 + i2 - 1;
+}
+
 float3 calculateForce(__global float3* positions, __global float3* velocities, __global float* gaussianRandoms,
         float gamma, float sigma, float cutoffRadius, float repulsionParameter, int numberOfDroplets, int dropletId) {
 
@@ -35,7 +47,7 @@ float3 calculateForce(__global float3* positions, __global float3* velocities, _
                         * dot(normalizedPositionVector, velocities[neighbourId] - velocities[dropletId]);
 
                 randomForce += sigma * weightRValue
-                        * gaussianRandoms[neighbourId * numberOfDroplets + dropletId] * normalizedPositionVector;
+                        * gaussianRandoms[findIndexOfRandomNumber(dropletId, neighbourId)] * normalizedPositionVector;
             }
         }
     }

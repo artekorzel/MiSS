@@ -1,8 +1,9 @@
 package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
-    int numberOfSteps = 10;
-    int numberOfDroplets = 10;
+    int numberOfSteps = 1;
+    int numberOfDroplets = 16382;//max card alloc
+    long numberOfDropletsLong = (long) numberOfDroplets;
     float deltaTime = 0.04f;
     float cutoffRadius = 0.01f;
     float boxSize = 1.0f;
@@ -16,11 +17,11 @@ public interface StartParameters {
     float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
 }
 
-//wyciagnac wyznaczanie sasiadow przed obliczenia??? - ale jak? - chodzi o przeniesienie do pam lokalnej
 //dodac srednia predkosc czastek po kazdej iteracji - w jaki sposob? -redukcja, jest cos na stronie amd
-//przeniesc moze petle glowna tez na kernel
 
-//clinfo - zainstalowac sdk
-//wiecej czastek, ~10mln
-//przeniesienie generowania liczb na karte
-//rysowanie w 3d punktow na podstawie pozycji po kazdym kroku
+//wiecej czastek, ~10mln - tutaj problemy z randomem i przeniesieniem na karte
+//przeniesienie generowania liczb na karte - tutaj problem troche moze byc
+
+//ewentualnie pozniej:
+//przeniesc moze petle glowna tez na kernel
+//wyciagnac wyznaczanie sasiadow przed obliczenia - przeniesienie do pamieci lokalnej i sprawdzenie wydajnosci
