@@ -91,12 +91,12 @@ __kernel void reductionVector(__global float3* data, __global float3* partialSum
     int local_id = get_local_id(0);
     int group_size = get_local_size(0);
     
-    partialSums[local_id] = data[get_global_id(0)];
-    
+    partialSums[local_id] = data[get_local_id(0)];
+    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     for(int i = local_id+group_size; i < dataLength; i += group_size){
         partialSums[local_id] += data[i];
     }
-    
+    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     if(local_id == 0){
         output[0] = 0;
         for(int i = 0; i < group_size; i++){

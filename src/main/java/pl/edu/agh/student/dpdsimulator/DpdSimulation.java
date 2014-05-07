@@ -1,6 +1,7 @@
 package pl.edu.agh.student.dpdsimulator;
 
 import com.nativelibs4java.opencl.*;
+import java.awt.BorderLayout;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
@@ -13,7 +14,7 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 public class DpdSimulation implements Simulation {
 
     public static final int VECTOR_SIZE = 3;
-    public static final int NUMBER_OF_REDUCTION_KERNELS = 10;
+    public static final int NUMBER_OF_REDUCTION_KERNELS = 5;
     private Random random;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
@@ -32,18 +33,19 @@ public class DpdSimulation implements Simulation {
     private Dpd dpdKernel;
     private int[] globalSizes;
     private int[] localSizes;
+    private int[] globalSizes2;
 
     public void run() throws Exception {
         initData();
 
-        printVectors("\nPositions", "pos", queue, positions);
-        printVectors("\nVelocities", "vel", queue, velocities);
+//        printVectors("\nPositions", "pos", queue, positions);
+//        printVectors("\nVelocities", "vel", queue, velocities);
 
         CLEvent simulationEndEvent = performSimulation();
 
-        printVectors("\nPositions", "pos", queue, newPositions, simulationEndEvent);
-        printVectors("\nVelocities", "vel", queue, newVelocities, simulationEndEvent);
-        printVectors("\nForces", "force", queue, forces, simulationEndEvent);
+//        printVectors("\nPositions", "pos", queue, newPositions, simulationEndEvent);
+//        printVectors("\nVelocities", "vel", queue, newVelocities, simulationEndEvent);
+//        printVectors("\nForces", "force", queue, forces, simulationEndEvent);
     }
 
     private void initData() throws IOException {
@@ -59,12 +61,13 @@ public class DpdSimulation implements Simulation {
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         gaussianRandoms = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * numberOfDroplets);
         gaussianRandomsData = allocateFloats(numberOfDroplets * numberOfDroplets);
-        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, NUMBER_OF_REDUCTION_KERNELS);
+        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, NUMBER_OF_REDUCTION_KERNELS*VECTOR_SIZE);
         output = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
         localSizes = new int[]{NUMBER_OF_REDUCTION_KERNELS};
+//        globalSizes2 = new int[]{1};
 //        time = 0.0f;
     }
 
@@ -91,11 +94,12 @@ public class DpdSimulation implements Simulation {
     }
 
     private CLEvent performSimulation() {
-        CLEvent loopEndEvent = null;
+        CLEvent loopEndEvent = null;      
         for (int i = 0, n = numberOfSteps - 1; i < n; ++i) {
             loopEndEvent = performSingleStep(dpdKernel, globalSizes, loopEndEvent);
 
             writePositionsFile(i, queue, newPositions, loopEndEvent);
+            printVectors("\nPositions", "pos", queue, positions);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
             writeAvg(queue, output ,loopEndEvent);
@@ -178,9 +182,14 @@ public class DpdSimulation implements Simulation {
     }
 
     private void writeAvg(CLQueue queue, CLBuffer<Float> buffer, CLEvent loopEndEvent) {
-        CLEvent reductionEvent = dpdKernel.reductionVector(queue, newPositions, partialSums, output, numberOfSteps, globalSizes, localSizes, loopEndEvent);
+        CLEvent reductionEvent = dpdKernel.reductionVector(queue, newPositions, partialSums, output, numberOfDroplets, globalSizes, localSizes, loopEndEvent);
         Pointer<Float> out = buffer.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
+        Pointer<Float> out2 = partialSums.read(queue, reductionEvent);
+        System.out.println("Partials:");
+        for(int i = 0; i < NUMBER_OF_REDUCTION_KERNELS; i++){           
+            System.out.println("(" + out2.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
+        }
     }
 }
 
