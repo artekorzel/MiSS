@@ -92,7 +92,7 @@ public class DpdSimulation implements Simulation {
             loopEndEvent = performSingleStep(dpdKernel, globalSizes, loopEndEvent);
 
             writePositionsFile(i, queue, newPositions, loopEndEvent);
-//            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
+            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
             writeAvg(queue, output ,loopEndEvent);
