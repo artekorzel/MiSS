@@ -25,3 +25,9 @@ public interface StartParameters {
 //ewentualnie pozniej:
 //przeniesc moze petle glowna tez na kernel
 //wyciagnac wyznaczanie sasiadow przed obliczenia - przeniesienie do pamieci lokalnej i sprawdzenie wydajnosci
+
+
+//mwc64x
+//wiecej typow czastek - rozbudowanie parametrow do macierzy (przynajmniej dwa typu czastek bo na sciany i erytrocyty)
+//do plikow zrzucamy poza pozycja tez typ czastek
+//jak budowac ksztalty (np sciane naczynia)?
