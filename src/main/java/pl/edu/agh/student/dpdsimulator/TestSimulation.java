@@ -6,8 +6,10 @@ import pl.edu.agh.student.dpdsimulator.kernels.Test;
 
 public class TestSimulation implements Simulation {
 
+    private CLContext context;
+
     public void run() throws Exception {
-        CLContext context = JavaCL.createBestContext();
+        context = JavaCL.createBestContext();
         CLQueue queue = context.createDefaultQueue();
 
         int dataLength = 10;
@@ -19,16 +21,34 @@ public class TestSimulation implements Simulation {
         }
         test.write(queue, testPointer, true);
 
+        Pointer<Integer> seedsMemoryData = Pointer.allocateInts(dataLength).order(context.getByteOrder());
+        for(int i = 0; i < dataLength; i++){
+            seedsMemoryData.set(i, i);
+        }
+        CLBuffer<Integer> seedsMemory= context.createIntBuffer(CLMem.Usage.InputOutput, seedsMemoryData);
+        Pointer<Float> randomsData = Pointer.allocateFloats(dataLength).order(context.getByteOrder());
+        CLBuffer<Float> randoms= context.createFloatBuffer(CLMem.Usage.InputOutput, randomsData);
+
         CLBuffer<Integer> out = context.createIntBuffer(CLMem.Usage.Output, dataLength);
 
         Test kernels = new Test(context);
         int[] globalSizes = new int[] { dataLength };
-        CLEvent addEvt = kernels.return_data(queue, test, out, dataLength, globalSizes, null);
-
-        Pointer<Integer> outPtr = out.read(queue, addEvt);
+        CLEvent randomEvent = kernels.random_number_kernel(queue, seedsMemory, randoms, 10, globalSizes, null);
+        CLEvent randomEvent2 = kernels.random_number_kernel(queue, seedsMemory, randoms, 10, globalSizes, null);
+        Pointer<Float> outPtr = randoms.read(queue, randomEvent2);
 
         for (int i = 0; i < dataLength; i++) {
-            System.out.println("out[" + i + "] = " + outPtr.get(i));
+            System.out.println("randoms[" + i + "] = " + outPtr.get(i));
         }
+//        CLEvent addEvt = kernels.return_data(queue, test, out, dataLength, globalSizes, null);
+//
+//        Pointer<Integer> outPtr = out.read(queue, addEvt);
+//
+//        for (int i = 0; i < dataLength; i++) {
+//            System.out.println("out[" + i + "] = " + outPtr.get(i));
+//        }
+    }
+    private Pointer<Float> allocateFloats(long size) {
+        return Pointer.allocateFloats(size).order(context.getByteOrder());
     }
 }

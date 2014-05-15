@@ -119,3 +119,35 @@ __kernel void reductionVector(__global float3* data, __global float3* partialSum
         output[0] /= dataLength;
     }
 }
+
+float rand(int* seed) //generuje liczby z zakresu [-1,1];
+{
+    int const a = 16807;
+    int const m = 2147483647;
+    *seed = (long)((*seed) * a)%(m+1);
+    return ((float)(*seed)/m);
+}
+
+float normal_rand(float U1, float U2){   //transformacja Boxa-Mullera zakłada, że U1 U2 rozkład jednostajny na przedziale (0,1]
+    float R = -2 * log(U1);
+    float fi = 2 * M_PI * U2;
+
+    float Z1 = sqrt(R) * cos(fi);
+    return Z1;
+    //float Z2 = sqrt(R) * sin(fi);
+}
+
+__kernel void random_number_kernel(global int* seed_memory, global float* randoms, int range)
+{
+    int global_id = get_global_id(1) * get_global_size(0) + get_global_id(0);
+
+    int seed = seed_memory[global_id];
+    float U1 = (rand(&seed)+1.0)/2;
+    float U2 = (rand(&seed)+1.0)/2;
+    randoms[global_id] = normal_rand(U1, U2);
+
+    seed_memory[global_id] = seed; // Save the seed for the next time this kernel gets enqueued.
+}
+
+
+// hashowanie przy pomocy funkcji cantora? http://pl.wikipedia.org/wiki/Funkcja_pary
