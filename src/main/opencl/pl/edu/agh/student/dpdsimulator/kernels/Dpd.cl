@@ -122,21 +122,23 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
 
 kernel void reductionVector(global float3* data, global float3* partialSums, global float3* output, int dataLength) {
     int local_id = get_local_id(0);
+    int global_id = get_global_id(0);
     int group_size = get_local_size(0);
-    
-    partialSums[local_id] = 0.0f;
-    
-    int i;
-    for(i = local_id; i < dataLength; i += group_size){
-        partialSums[local_id] += data[i];
+
+    if(global_id < dataLength){
+        partialSums[local_id] = data[local_id];
+    } else {
+        partialSums[local_id] = 0;
     }
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    if(local_id == 0){
-        output[0] = 0;
-        int i;
-        for(i = 0; i < group_size; i++){
-            output[0] += partialSums[i];
+    int offset;
+    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1){
+        if(local_id < offset){
+            partialSums[local_id] += partialSums[local_id + offset];
         }
-        output[0] /= dataLength;
+        barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+    }
+    if(global_id == 0){
+        output[0] = partialSums[0]/dataLength;
     }
 }

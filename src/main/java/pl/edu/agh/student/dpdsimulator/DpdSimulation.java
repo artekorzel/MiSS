@@ -48,12 +48,12 @@ public class DpdSimulation implements Simulation {
         predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * VECTOR_SIZE);
         newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
-        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, NUMBER_OF_REDUCTION_KERNELS * VECTOR_SIZE);
+        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         output = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
-        localSizes = new int[]{NUMBER_OF_REDUCTION_KERNELS};
+        localSizes = new int[]{numberOfDroplets};
     }
 
     private CLBuffer<Float> createVector(float range) {
@@ -88,11 +88,11 @@ public class DpdSimulation implements Simulation {
             
             loopEndEvent = performSingleStep(loopEndEvent);
 
-            writePositionsFile(newPositions, loopEndEvent);
+//            writePositionsFile(newPositions, loopEndEvent);
 //            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
-//            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
+            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
-//            writeAvg(output ,loopEndEvent);
+            writeAvg(output ,loopEndEvent);
             swapPositions();
             swapVelocities();
         }
