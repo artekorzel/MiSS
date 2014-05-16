@@ -61,14 +61,14 @@ public class DpdSimulation implements Simulation {
 
     private CLBuffer<Float> createVector(float range) {
         long numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        Pointer<Float> valuesPointer = allocateFloats(numberOfCoordinates).order(context.getByteOrder());
+        Pointer<Float> valuesPointer = allocateFloats(numberOfCoordinates);
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             valuesPointer.set(i, nextRandomFloat(range));
             valuesPointer.set(i + 1, nextRandomFloat(range));
             valuesPointer.set(i + 2, nextRandomFloat(range));
             valuesPointer.set(i + 3, 0.0f);
         }
-        CLBuffer<Float> buffer = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
+        CLBuffer<Float> buffer = context.createFloatBuffer(CLMem.Usage.InputOutput, valuesPointer);
         valuesPointer.release();
         return buffer;
     }

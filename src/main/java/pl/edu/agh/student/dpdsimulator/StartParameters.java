@@ -2,7 +2,7 @@ package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
     int numberOfSteps = 1;
-    int numberOfDroplets = 10;//max card alloc
+    int numberOfDroplets = 10;
     float deltaTime = 0.04f;
     float cutoffRadius = 0.01f;
     float boxSize = 1.0f;
@@ -16,17 +16,13 @@ public interface StartParameters {
     float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
 }
 
-//dodac srednia predkosc czastek po kazdej iteracji - w jaki sposob? -redukcja, jest cos na stronie amd
-
 //wiecej czastek, ~10mln - tutaj problemy z randomem i przeniesieniem na karte
-//przeniesienie generowania liczb na karte - tutaj problem troche moze byc
 
 //ewentualnie pozniej:
 //przeniesc moze petle glowna tez na kernel
 //wyciagnac wyznaczanie sasiadow przed obliczenia - przeniesienie do pamieci lokalnej i sprawdzenie wydajnosci
 
 
-//mwc64x
 //wiecej typow czastek - rozbudowanie parametrow do macierzy (przynajmniej dwa typu czastek bo na sciany i erytrocyty)
 //do plikow zrzucamy poza pozycja tez typ czastek
 //jak budowac ksztalty (np sciane naczynia)?
