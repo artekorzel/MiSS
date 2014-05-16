@@ -2,13 +2,13 @@ typedef struct Data {
 	int number;
 } Data;
 
-void manipulate(__global const Data* data, __global int* out, __private int id) {
+void manipulate(global const Data* data, global int* out, private int id) {
     out[id] = data[id].number;
 }
 
 
 
-__kernel void return_data(__global const Data* data, __global int* out, int data_length)
+kernel void return_data(global const Data* data, global int* out, int data_length)
 {
     int global_id = get_global_id(0);
     if (global_id >= data_length)
@@ -17,31 +17,41 @@ __kernel void return_data(__global const Data* data, __global int* out, int data
     manipulate(data, out, global_id);
 }
 
-float rand(int* seed)
-{
-    int const a = 16807;
-    int const m = 2147483647;
-    *seed = (long)((*seed) * a)%(m+1);
-    return ((float)(*seed)/m);
+float rand(int* seed, int step) {//generuje liczby z zakresu [-1,1];
+    long const a = 16807L;
+    long const m = 2147483647L;
+    *seed = ((*seed) * a * step) % m;
+    return (float)(*seed) / (m - 1);
 }
 
-float normal_rand(float U1, float U2){
+float normal_rand(float U1, float U2) {
      float R = -2 * log(U1);
      float fi = 2 * M_PI * U2;
-
      float Z1 = sqrt(R) * cos(fi);
      return Z1;
      //float Z2 = sqrt(R) * sin(fi);
 }
 
-__kernel void random_number_kernel(global int* seed_memory, global float* randoms, int range)
-{
-    int global_id = get_global_id(1) * get_global_size(0) + get_global_id(0);
+int calculateHash(int d1, int d2) {    
+    int i1, i2;
+    if(d1 <= d2) {
+        i1 = d1;
+        i2 = d2;
+    } else {
+        i1 = d2;
+        i2 = d1;
+    }
+    return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
+}
 
-    int seed = seed_memory[global_id];
-    float U1 = (rand(&seed)+1.0)/2;
-    float U2 = (rand(&seed)+1.0)/2;
-    randoms[global_id] = normal_rand(U1, U2);
+kernel void random_number_kernel(global float* randoms, int numberOfDroplets, int neighbourId, int step) {
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }
 
-    seed_memory[global_id] = seed; // Save the seed for the next time this kernel gets enqueued.
+    int seed = calculateHash(dropletId, neighbourId);
+    float U1 = (rand(&seed, step) + 1.0) / 2;
+    float U2 = (rand(&seed, step) + 1.0) / 2;
+    randoms[dropletId] = normal_rand(U1, U2);
 }

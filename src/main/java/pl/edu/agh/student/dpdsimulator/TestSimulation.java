@@ -12,7 +12,7 @@ public class TestSimulation implements Simulation {
         context = JavaCL.createBestContext();
         CLQueue queue = context.createDefaultQueue();
 
-        int dataLength = 10;
+        int dataLength = 1000;
 
         CLBuffer<Test.Data> test = context.createBuffer(CLMem.Usage.InputOutput, Test.Data.class, dataLength);
         Pointer<Test.Data> testPointer = Pointer.allocateArray(Test.Data.class, dataLength);
@@ -33,8 +33,8 @@ public class TestSimulation implements Simulation {
 
         Test kernels = new Test(context);
         int[] globalSizes = new int[] { dataLength };
-        CLEvent randomEvent = kernels.random_number_kernel(queue, seedsMemory, randoms, 10, globalSizes, null);
-        CLEvent randomEvent2 = kernels.random_number_kernel(queue, seedsMemory, randoms, 10, globalSizes, null);
+        CLEvent randomEvent = kernels.random_number_kernel(queue, randoms, dataLength, 3, 35, globalSizes, null);
+        CLEvent randomEvent2 = kernels.random_number_kernel(queue, randoms, dataLength, 3, 1024, globalSizes, null);
         Pointer<Float> outPtr = randoms.read(queue, randomEvent2);
 
         for (int i = 0; i < dataLength; i++) {

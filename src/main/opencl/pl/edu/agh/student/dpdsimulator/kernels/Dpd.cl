@@ -14,20 +14,42 @@ float3 normalizePosition(float3 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
 }
 
-long findIndexOfRandomNumber(int dropletId, int neighbourId) {
-    long i1, i2;
-    if(dropletId <= neighbourId) {
-        i1 = dropletId;
-        i2 = neighbourId;
+int calculateHash(int d1, int d2) {    
+    int i1, i2;
+    if(d1 <= d2) {
+        i1 = d1;
+        i2 = d2;
     } else {
-        i1 = neighbourId;
-        i2 = dropletId;
+        i1 = d2;
+        i2 = d1;
     }
-    return i1 / 2 * (i1 - 1) + i2 - 1;
+    return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
-float3 calculateForce(__global float3* positions, __global float3* velocities, __global float* gaussianRandoms,
-        float gamma, float sigma, float cutoffRadius, float repulsionParameter, int numberOfDroplets, int dropletId) {
+float rand(int seed, int step) {
+    long const a = 16807L;
+    long const m = 2147483647L;
+    seed = ((seed) * a * step) % m;
+    return (float)(seed) / (m - 1);
+}
+
+float normalRand(float U1, float U2) {
+     float R = -2 * log(U1);
+     float fi = 2 * M_PI * U2;
+     float Z1 = sqrt(R) * cos(fi);
+     return Z1;
+     //float Z2 = sqrt(R) * sin(fi);
+}
+
+float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) {
+    int seed = calculateHash(dropletId, neighbourId);
+    float U1 = (rand(seed, step) + 1.0) / 2;
+    float U2 = (rand(seed, step) + 1.0) / 2;
+    return normalRand(U1, U2);
+}
+
+float3 calculateForce(global float3* positions, global float3* velocities, float gamma, float sigma, 
+        float cutoffRadius, float repulsionParameter, int numberOfDroplets, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -46,8 +68,8 @@ float3 calculateForce(__global float3* positions, __global float3* velocities, _
                 dissipativeForce += gamma * weightDValue * normalizedPositionVector
                         * dot(normalizedPositionVector, velocities[neighbourId] - velocities[dropletId]);
 
-                randomForce += sigma * weightRValue
-                        * gaussianRandoms[findIndexOfRandomNumber(dropletId, neighbourId)] * normalizedPositionVector;
+                randomForce += sigma * weightRValue * normalizedPositionVector
+                        * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
             }
         }
     }
@@ -55,21 +77,20 @@ float3 calculateForce(__global float3* positions, __global float3* velocities, _
     return conservativeForce + dissipativeForce + randomForce;
 }
 
-__kernel void calculateForces(__global float3* positions, __global float3* velocities, __global float3* forces,
-        __global float* gaussianRandoms, float gamma, float sigma, float cutoffRadius, float repulsionParameter,
-        int numberOfDroplets) {
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces,
+        float gamma, float sigma, float cutoffRadius, float repulsionParameter, int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    forces[dropletId] = calculateForce(positions, velocities, gaussianRandoms,
-            gamma, sigma, cutoffRadius, repulsionParameter, numberOfDroplets, dropletId);
+    forces[dropletId] = calculateForce(positions, velocities, gamma, 
+            sigma, cutoffRadius, repulsionParameter, numberOfDroplets, dropletId, step);
 }
 
-__kernel void calculateNewPositionsAndPredictedVelocities(__global float3* positions, __global float3* velocities,
-        __global float3* forces, __global float3* newPositions, __global float3* predictedVelocities,
+kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
+        global float3* forces, global float3* newPositions, global float3* predictedVelocities,
         float deltaTime, float lambda, int numberOfDroplets, float boxSize) {
 
     int dropletId = get_global_id(0);
@@ -83,23 +104,23 @@ __kernel void calculateNewPositionsAndPredictedVelocities(__global float3* posit
     predictedVelocities[dropletId] = velocities[dropletId] + lambda * deltaTime * forces[dropletId];
 }
 
-__kernel void calculateNewVelocities(__global float3* newPositions, __global float3* velocities,
-        __global float3* predictedVelocities, __global float3* newVelocities, __global float3* forces,
-        __global float* gaussianRandoms, float deltaTime, float gamma, float sigma, float cutoffRadius,
-        float repulsionParameter, int numberOfDroplets) {
+kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
+        global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
+        float deltaTime, float gamma, float sigma, float cutoffRadius, float repulsionParameter, 
+        int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    float3 predictedForce = calculateForce(newPositions, predictedVelocities, gaussianRandoms, gamma, sigma,
-            cutoffRadius, repulsionParameter, numberOfDroplets, dropletId);
+    float3 predictedForce = calculateForce(newPositions, predictedVelocities, gamma, sigma,
+            cutoffRadius, repulsionParameter, numberOfDroplets, dropletId, step);
 
     newVelocities[dropletId] = velocities[dropletId] + 0.5 * deltaTime * (forces[dropletId] + predictedForce);
 }
 
-__kernel void reductionVector(__global float3* data, __global float3* partialSums, __global float3* output, int dataLength){
+kernel void reductionVector(global float3* data, global float3* partialSums, global float3* output, int dataLength) {
     int local_id = get_local_id(0);
     int group_size = get_local_size(0);
     
@@ -119,35 +140,3 @@ __kernel void reductionVector(__global float3* data, __global float3* partialSum
         output[0] /= dataLength;
     }
 }
-
-float rand(int* seed) //generuje liczby z zakresu [-1,1];
-{
-    int const a = 16807;
-    int const m = 2147483647;
-    *seed = (long)((*seed) * a)%(m+1);
-    return ((float)(*seed)/m);
-}
-
-float normal_rand(float U1, float U2){   //transformacja Boxa-Mullera zakłada, że U1 U2 rozkład jednostajny na przedziale (0,1]
-    float R = -2 * log(U1);
-    float fi = 2 * M_PI * U2;
-
-    float Z1 = sqrt(R) * cos(fi);
-    return Z1;
-    //float Z2 = sqrt(R) * sin(fi);
-}
-
-__kernel void random_number_kernel(global int* seed_memory, global float* randoms, int range)
-{
-    int global_id = get_global_id(1) * get_global_size(0) + get_global_id(0);
-
-    int seed = seed_memory[global_id];
-    float U1 = (rand(&seed)+1.0)/2;
-    float U2 = (rand(&seed)+1.0)/2;
-    randoms[global_id] = normal_rand(U1, U2);
-
-    seed_memory[global_id] = seed; // Save the seed for the next time this kernel gets enqueued.
-}
-
-
-// hashowanie przy pomocy funkcji cantora? http://pl.wikipedia.org/wiki/Funkcja_pary
