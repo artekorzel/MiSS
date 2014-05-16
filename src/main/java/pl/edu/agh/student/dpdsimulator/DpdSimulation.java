@@ -13,7 +13,6 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 public class DpdSimulation implements Simulation {
 
     public static final int VECTOR_SIZE = 4;
-    public static final int NUMBER_OF_REDUCTION_KERNELS = 5;
     private Random random;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
@@ -53,7 +52,11 @@ public class DpdSimulation implements Simulation {
         
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
-        localSizes = new int[]{numberOfDroplets};
+        int reduction_kernels = 1;
+        while(reduction_kernels < numberOfDroplets){
+            reduction_kernels *= 2;
+        }
+        localSizes = new int[]{reduction_kernels};
     }
 
     private CLBuffer<Float> createVector(float range) {
@@ -162,7 +165,7 @@ public class DpdSimulation implements Simulation {
 
     private void writeAvg(CLBuffer<Float> buffer, CLEvent loopEndEvent) {
         CLEvent reductionEvent = dpdKernel.reductionVector(queue, newVelocities, partialSums, 
-                output, numberOfDroplets, localSizes, localSizes, loopEndEvent);
+                buffer, numberOfDroplets, localSizes, null, loopEndEvent);
         Pointer<Float> out = buffer.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
         out.release();
