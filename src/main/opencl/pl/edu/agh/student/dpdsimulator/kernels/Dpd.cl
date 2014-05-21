@@ -5,11 +5,6 @@ float weightR(float distanceValue, float cutoffRadius) {
     return 1.0 - distanceValue / cutoffRadius;
 }
 
-float weightD(float distanceValue, float cutoffRadius) {
-    float weightRValue = weightR(distanceValue, cutoffRadius);
-    return weightRValue * weightRValue;
-}
-
 float3 normalizePosition(float3 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
 }
@@ -26,11 +21,11 @@ int calculateHash(int d1, int d2) {
     return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
-float rand(int seed, int step) {
+float rand(int* seed, int step) {
     long const a = 16807L;
     long const m = 2147483647L;
-    seed = ((seed) * a * step) % m;
-    return (float)(seed) / (m - 1);
+    *seed = (*seed * a * step) % m;
+    return (float)(*seed) / (m - 1);
 }
 
 float normalRand(float U1, float U2) {
@@ -43,8 +38,8 @@ float normalRand(float U1, float U2) {
 
 float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) {
     int seed = calculateHash(dropletId, neighbourId);
-    float U1 = (rand(seed, step) + 1.0) / 2;
-    float U2 = (rand(seed, step) + 1.0) / 2;
+    float U1 = (rand(&seed, step) + 1.0) / 2;
+    float U2 = (rand(&seed, step) + 1.0) / 2;
     return normalRand(U1, U2);
 }
 
@@ -55,18 +50,22 @@ float3 calculateForce(global float3* positions, global float3* velocities, float
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
     float3 randomForce = (float3)(0.0, 0.0, 0.0);
 
+    float3 dropletPosition = positions[dropletId];
+    float3 dropletVelocity = velocities[dropletId];
+    
     for(int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
         if(neighbourId != dropletId) {
-            float distanceValue = distance(positions[neighbourId], positions[dropletId]);
+            float3 neighbourPosition = positions[neighbourId];
+            float distanceValue = distance(neighbourPosition, dropletPosition);
             if(distanceValue < cutoffRadius) {
                 float weightRValue = weightR(distanceValue, cutoffRadius);
-                float weightDValue = weightD(distanceValue, cutoffRadius);
-                float3 normalizedPositionVector = normalize(positions[neighbourId] - positions[dropletId]);
+                float weightDValue = weightRValue * weightRValue;
+                float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
 
                 conservativeForce += repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
                 dissipativeForce += gamma * weightDValue * normalizedPositionVector
-                        * dot(normalizedPositionVector, velocities[neighbourId] - velocities[dropletId]);
+                        * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
                 randomForce += sigma * weightRValue * normalizedPositionVector
                         * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
@@ -75,6 +74,20 @@ float3 calculateForce(global float3* positions, global float3* velocities, float
     }
 
     return conservativeForce + dissipativeForce + randomForce;
+}
+
+kernel void generateRandomVector(global float3* vector, float range, int numberOfDroplets, int initialSeed) {
+
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }
+    
+    int seed = calculateHash(dropletId, initialSeed);
+    float x = rand(&seed, 1) * 2 - 1;
+    float y = rand(&seed, 1) * 2 - 1;
+    float z = rand(&seed, 1) * 2 - 1;
+    vector[dropletId] = ((float3) (x, y, z)) * range;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces,

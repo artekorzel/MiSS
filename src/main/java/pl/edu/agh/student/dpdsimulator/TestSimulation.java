@@ -34,7 +34,7 @@ public class TestSimulation implements Simulation {
         Test kernels = new Test(context);
         int[] globalSizes = new int[] { dataLength };
         CLEvent randomEvent = kernels.random_number_kernel(queue, randoms, dataLength, 3, 35, globalSizes, null);
-        CLEvent randomEvent2 = kernels.random_number_kernel(queue, randoms, dataLength, 3, 1024, globalSizes, null);
+        CLEvent randomEvent2 = kernels.random_number_kernel(queue, randoms, dataLength, 3, 1024, globalSizes, null, randomEvent);
         Pointer<Float> outPtr = randoms.read(queue, randomEvent2);
 
         for (int i = 0; i < dataLength; i++) {

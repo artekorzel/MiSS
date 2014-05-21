@@ -25,10 +25,10 @@ float rand(int* seed, int step) {//generuje liczby z zakresu [-1,1];
 }
 
 float normal_rand(float U1, float U2) {
-     float R = -2 * log(U1);
-     float fi = 2 * M_PI * U2;
-     float Z1 = sqrt(R) * cos(fi);
-     return Z1;
+    float R = -2 * log(U1);
+    float fi = 2 * M_PI * U2;
+    float Z1 = sqrt(R) * cos(fi); 
+    return Z1;
      //float Z2 = sqrt(R) * sin(fi);
 }
 

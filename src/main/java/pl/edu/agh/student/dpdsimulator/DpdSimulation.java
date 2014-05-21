@@ -19,16 +19,16 @@ public class DpdSimulation implements Simulation {
     private CLBuffer<Float> velocities;
     private CLBuffer<Float> predictedVelocities;
     private CLBuffer<Float> newVelocities;
-    private CLBuffer<Float> forces; 
+    private CLBuffer<Float> forces;
     private CLBuffer<Float> partialSums;
     private CLBuffer<Float> averageVelocity;
-    
     private CLContext context;
     private CLQueue queue;
     private Dpd dpdKernel;
     private int[] globalSizes;
     private int[] localSizes;
     int step;
+    int initialRandom;
 
     @Override
     public void run() throws Exception {
@@ -41,102 +41,90 @@ public class DpdSimulation implements Simulation {
         queue = context.createDefaultQueue();
 
         random = new Random();
-        positions = createVector(boxSize);
+        positions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
-        velocities = createVector(velocityInitRange);
+        velocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input, numberOfDroplets * VECTOR_SIZE);
         newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
-        
+
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
         int noOfReductionKernels = 1;
-        while(noOfReductionKernels < numberOfDroplets){
+        while (noOfReductionKernels < numberOfDroplets) {
             noOfReductionKernels *= 2;
         }
         localSizes = new int[]{noOfReductionKernels};
     }
 
-    private CLBuffer<Float> createVector(float range) {
-        long numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        Pointer<Float> valuesPointer = allocateFloats(numberOfCoordinates);
-        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
-            valuesPointer.set(i, nextRandomFloat(range));
-            valuesPointer.set(i + 1, nextRandomFloat(range));
-            valuesPointer.set(i + 2, nextRandomFloat(range));
-            valuesPointer.set(i + 3, 0.0f);
-        }
-        CLBuffer<Float> buffer = context.createFloatBuffer(CLMem.Usage.InputOutput, valuesPointer);
-        valuesPointer.release();
-        return buffer;
-    }
-
-    private float nextRandomFloat(float range) {
-        return random.nextFloat() * 2 * range - range;
-    }
-
-    private Pointer<Float> allocateFloats(long size) {
-        return Pointer.allocateFloats(size).order(context.getByteOrder());
-    }
-
     private void performSimulation() {
-//        printVectors("\nPositions", "pos", queue, positions);
-//        printVectors("\nVelocities", "vel", queue, velocities);
+        
+        CLEvent loopEndEvent = initPositionsAndVelocities();
+//        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
+//        printVectors("\nVelocities", "vel", queue, velocities, loopEndEvent);
 
-        CLEvent loopEndEvent = null;
+        initialRandom = random.nextInt();
         for (step = 1; step <= numberOfSteps; ++step) {
-            System.out.println("Step: " + step);            
+            System.out.println("Step: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
 //            printAverageVelocity(loopEndEvent);
-//            writePositionsFile(newPositions, loopEndEvent);
+            writePositionsFile(newPositions, loopEndEvent);
 //            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
-            swapPositions();
-            swapVelocities();
+            swapPositions(loopEndEvent);
+            swapVelocities(loopEndEvent);
         }
     }
 
+    private CLEvent initPositionsAndVelocities() {
+        CLEvent generatePositionsEvent = dpdKernel.generateRandomVector(queue, positions, boxSize,
+                numberOfDroplets, random.nextInt(numberOfDroplets), globalSizes, null);
+        return dpdKernel.generateRandomVector(queue, velocities, boxSize, numberOfDroplets,
+                random.nextInt(numberOfDroplets), globalSizes, null, generatePositionsEvent);
+    }
+
     private CLEvent performSingleStep(CLEvent previousStepEvent) {
-        CLEvent forcesEvent = calculateForces(dpdKernel, globalSizes, previousStepEvent);
-        CLEvent newPositionsAndPredictedVelocitiesEvent = 
-                calculateNewPositionsAndPredictedVelocities(dpdKernel, globalSizes, forcesEvent);
-        return calculateNewVelocities(dpdKernel, globalSizes, newPositionsAndPredictedVelocitiesEvent);
+        CLEvent forcesEvent = calculateForces(previousStepEvent);
+        CLEvent newPositionsAndPredictedVelocitiesEvent = calculateNewPositionsAndPredictedVelocities(forcesEvent);
+        return calculateNewVelocities(newPositionsAndPredictedVelocitiesEvent);
     }
 
-    private CLEvent calculateForces(Dpd dpdKernel, int[] globalSizes, CLEvent gaussianRandomsEvent) {
+    private CLEvent calculateForces(CLEvent gaussianRandomsEvent) {
         return dpdKernel.calculateForces(queue, positions, velocities, forces, gamma, sigma, cutoffRadius, 
-                repulsionParameter, numberOfDroplets, step, globalSizes, null, gaussianRandomsEvent);
+                repulsionParameter, numberOfDroplets, step + initialRandom, globalSizes, null, gaussianRandomsEvent);
     }
 
-    private CLEvent calculateNewPositionsAndPredictedVelocities(Dpd dpdKernel, int[] globalSizes, CLEvent forcesEvent) {
+    private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent forcesEvent) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces, newPositions,
                 predictedVelocities, deltaTime, lambda, numberOfDroplets, boxSize, globalSizes, null, forcesEvent);
     }
 
-    private CLEvent calculateNewVelocities(Dpd dpdKernel, int[] globalSizes, CLEvent newPositionsAndPredictedVelocitiesEvent) {
+    private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities,
-                forces, deltaTime, gamma, sigma, cutoffRadius, repulsionParameter, numberOfDroplets, step, 
+                forces, deltaTime, gamma, sigma, cutoffRadius, repulsionParameter, numberOfDroplets, step + initialRandom, 
                 globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
     }
 
-    private void printAverageVelocity(CLEvent loopEndEvent) {
-        CLEvent reductionEvent = dpdKernel.reductionVector(queue, newVelocities, partialSums, 
-                averageVelocity, numberOfDroplets, localSizes, null, loopEndEvent);
+    private void printAverageVelocity(CLEvent... events) {
+        CLEvent reductionEvent = dpdKernel.reductionVector(queue, newVelocities, partialSums,
+                averageVelocity, numberOfDroplets, localSizes, null, events);
         Pointer<Float> out = averageVelocity.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
         out.release();
-    }   
+    }
 
-    private void swapPositions() {
+    private void swapPositions(CLEvent... events) {
+        CLEvent.waitFor(events);
         CLBuffer<Float> tmp = positions;
         positions = newPositions;
         newPositions = tmp;
     }
 
-    private void swapVelocities() {
+    private void swapVelocities(CLEvent... events) {
+        CLEvent.waitFor(events);
         CLBuffer<Float> tmp = velocities;
         velocities = newVelocities;
         newVelocities = tmp;
@@ -167,7 +155,5 @@ public class DpdSimulation implements Simulation {
                     + out.get(i * VECTOR_SIZE + 2) + ")");
         }
         out.release();
-    }     
+    }
 }
-
-
