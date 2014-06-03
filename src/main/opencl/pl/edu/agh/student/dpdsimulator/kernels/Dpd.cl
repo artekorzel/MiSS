@@ -1,3 +1,12 @@
+typedef struct DropletParameter {
+    float temperature;
+    float density;
+    float repulsionParameter;
+    float lambda;
+    float sigma;
+    float gamma;
+} DropletParameter;
+
 float weightR(float distanceValue, float cutoffRadius) {
     if(distanceValue > cutoffRadius) {
         return 0.0;
@@ -43,8 +52,8 @@ float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int s
     return normalRand(U1, U2);
 }
 
-float3 calculateForce(global float3* positions, global float3* velocities, float gamma, float sigma, 
-        float cutoffRadius, float repulsionParameter, int numberOfDroplets, int dropletId, int step) {
+float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
+    global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -62,12 +71,12 @@ float3 calculateForce(global float3* positions, global float3* velocities, float
                 float weightDValue = weightRValue * weightRValue;
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
 
-                conservativeForce += repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
+                conservativeForce += params[types[dropletId]].repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                dissipativeForce += gamma * weightDValue * normalizedPositionVector
+                dissipativeForce += params[types[dropletId]].gamma * weightDValue * normalizedPositionVector
                         * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
-                randomForce += sigma * weightRValue * normalizedPositionVector
+                randomForce += params[types[dropletId]].sigma * weightRValue * normalizedPositionVector
                         * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
             }
         }
@@ -75,6 +84,37 @@ float3 calculateForce(global float3* positions, global float3* velocities, float
 
     return conservativeForce + dissipativeForce + randomForce;
 }
+
+bool isInsideTube(float3 position, float radius, float height){
+    if(fabs(position.y) < height && sqrt(position.x * position.x + position.z * position.z) < radius){
+        return true;
+    }
+    return false;
+}
+
+kernel void generateTube(global float3* vector, global int* types, int numberOfDroplets, float range, int type,
+    int initialSeed, float radius, float height){
+    
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }    
+//    types[dropletId] = type;
+    int seed = calculateHash(dropletId, initialSeed);
+    float x = rand(&seed, 1) * 2 - 1;
+    float y = rand(&seed, 1) * 2 - 1;
+    float z = rand(&seed, 1) * 2 - 1;
+    vector[dropletId] = ((float3) (x, y, z)) * range;
+    if(isInsideTube(vector[dropletId], radius, height)){
+        types[dropletId] = type;
+    } else {
+        types[dropletId] = 0;
+    }
+    
+    
+}
+
+
 
 kernel void generateRandomVector(global float3* vector, float range, int numberOfDroplets, int initialSeed) {
 
@@ -90,16 +130,16 @@ kernel void generateRandomVector(global float3* vector, float range, int numberO
     vector[dropletId] = ((float3) (x, y, z)) * range;
 }
 
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces,
-        float gamma, float sigma, float cutoffRadius, float repulsionParameter, int numberOfDroplets, int step) {
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global DropletParameter* params,
+        global int* types, float cutoffRadius, int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    forces[dropletId] = calculateForce(positions, velocities, gamma, 
-            sigma, cutoffRadius, repulsionParameter, numberOfDroplets, dropletId, step);
+    forces[dropletId] = calculateForce(positions, velocities, params, types,
+             cutoffRadius,  numberOfDroplets, dropletId, step);
 }
 
 kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
@@ -119,16 +159,15 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
 
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
         global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
-        float deltaTime, float gamma, float sigma, float cutoffRadius, float repulsionParameter, 
-        int numberOfDroplets, int step) {
+        global DropletParameter* params, global int* types, float deltaTime, float cutoffRadius, int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    float3 predictedForce = calculateForce(newPositions, predictedVelocities, gamma, sigma,
-            cutoffRadius, repulsionParameter, numberOfDroplets, dropletId, step);
+    float3 predictedForce = calculateForce(newPositions, predictedVelocities, params, types,
+            cutoffRadius,  numberOfDroplets, dropletId, step);
 
     newVelocities[dropletId] = velocities[dropletId] + 0.5 * deltaTime * (forces[dropletId] + predictedForce);
 }
