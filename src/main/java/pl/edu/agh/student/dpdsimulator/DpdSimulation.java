@@ -53,7 +53,7 @@ public class DpdSimulation implements Simulation {
         partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
-        dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, DropletParameter.class, 10L);               
+        //dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, DropletParameter.class, 10L);               
         
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
@@ -70,7 +70,7 @@ public class DpdSimulation implements Simulation {
         initDropletParameters();        
 //        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
 //        printVectors("\nVelocities", "vel", queue, velocities, loopEndEvent);
-
+        printParams();
         initialRandom = random.nextInt();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("Step: " + step);
@@ -86,18 +86,11 @@ public class DpdSimulation implements Simulation {
     }
 
     private void initDropletParameters(){
-        long size = 2L;
-        Pointer<DropletParameter> valuesPointer = Pointer.allocateArray(DropletParameter.class, size).order(context.getByteOrder());
-        DropletParameter d = new DropletParameter();
-        d.temperature(293.1f);
-        d.density(3.0f);
-        d.repulsionParameter(75.0f);
-        d.lambda(0.5f);
-        d.sigma(0.075f);
-        d.gamma(0.075f * 0.075f / 2.0f / boltzmanConstant / 293.1f);
-        valuesPointer.set(0, d);
-        valuesPointer.set(1, d);
-        dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);        
+        float gamma = 0.075f * 0.075f / 2.0f / boltzmanConstant / 293.1f;
+        DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);        
+        float gamma2 = 0.075f * 0.075f / 2.0f / (float)1.3806488e-23 / 293.1f;
+        DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);        
+        dropletParameters = DropletParameters.buildBuffer(context);
     }
     
     private CLEvent initPositionsAndVelocities() {        
@@ -181,5 +174,12 @@ public class DpdSimulation implements Simulation {
                     + out.get(i * VECTOR_SIZE + 2) + ")");
         }
         out.release();
+    }
+    
+    private void printParams(){
+        Pointer<DropletParameter> out = dropletParameters.read(queue);
+        for(int i = 0; i < 2; i++){
+            System.out.println(i + ": " + out.get(i).gamma());
+        }
     }
 }
