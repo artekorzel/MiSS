@@ -71,10 +71,10 @@ public class JavaDpdMockSimulation implements Simulation {
 
     private void performSingleStep() {
         for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
-            writeGaussianRandoms();
-            calculateForces(dropletId);
-            calculateNewPositionsAndPredictedVelocities(dropletId);
-            calculateNewVelocities(dropletId);
+//            writeGaussianRandoms();
+//            calculateForces(dropletId);
+//            calculateNewPositionsAndPredictedVelocities(dropletId);
+//            calculateNewVelocities(dropletId);
         }
     }
 
@@ -88,21 +88,21 @@ public class JavaDpdMockSimulation implements Simulation {
         }
     }
 
-    private void calculateForces(int dropletId) {
-        JavaDpdMock.calculateForces(positions, velocities, forces, gaussianRandoms,
-                gamma, sigma, cutoffRadius, numberOfDroplets, repulsionParameter, dropletId);
-    }
-
-    private void calculateNewPositionsAndPredictedVelocities(int dropletId) {
-        JavaDpdMock.calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
-                predictedVelocities, deltaTime, lambda, boxSize, dropletId);
-    }
-
-    private void calculateNewVelocities(int dropletId) {
-        JavaDpdMock.calculateNewVelocities(newPositions, velocities, predictedVelocities,
-                newVelocities, forces, gaussianRandoms, deltaTime, gamma, sigma, cutoffRadius, numberOfDroplets,
-                repulsionParameter, dropletId);
-    }
+//    private void calculateForces(int dropletId) {
+//        JavaDpdMock.calculateForces(positions, velocities, forces, gaussianRandoms, DropletParameters, types,
+//                 cutoffRadius, numberOfDroplets, dropletId);
+//    }
+//
+//    private void calculateNewPositionsAndPredictedVelocities(int dropletId) {
+//        JavaDpdMock.calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
+//                predictedVelocities, deltaTime, lambda, boxSize, dropletId);
+//    }
+//
+//    private void calculateNewVelocities(int dropletId) {
+//        JavaDpdMock.calculateNewVelocities(newPositions, velocities, predictedVelocities,
+//                newVelocities, forces, gaussianRandoms, deltaTime, gamma, sigma, cutoffRadius, numberOfDroplets,
+//                repulsionParameter, dropletId);
+//    }
 
     private void swapPositions() {
         float[][] tmp = positions;

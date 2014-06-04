@@ -144,7 +144,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
 
 kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
         global float3* forces, global float3* newPositions, global float3* predictedVelocities,
-        float deltaTime, float lambda, int numberOfDroplets, float boxSize) {
+        global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, float boxSize) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -154,7 +154,7 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
     float3 newPosition = positions[dropletId]
             + deltaTime * velocities[dropletId] + 0.5 * deltaTime * deltaTime * forces[dropletId];
     newPositions[dropletId] = normalizePosition(newPosition, boxSize);
-    predictedVelocities[dropletId] = velocities[dropletId] + lambda * deltaTime * forces[dropletId];
+    predictedVelocities[dropletId] = velocities[dropletId] + params[types[dropletId]].lambda * deltaTime * forces[dropletId];
 }
 
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
