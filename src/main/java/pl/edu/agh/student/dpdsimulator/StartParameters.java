@@ -11,7 +11,7 @@ public interface StartParameters {
 
 }
 
-//wiecej czastek, ~10mln - tutaj problemy z randomem i przeniesieniem na karte
+//wiecej czastek, ~10mln - tutaj niezidentyfikowany problem z pamiecia, mozliwe ok 1mln
 
 //ewentualnie pozniej:
 //przeniesc moze petle glowna tez na kernel
@@ -21,3 +21,6 @@ public interface StartParameters {
 //wiecej typow czastek - rozbudowanie parametrow do macierzy (przynajmniej dwa typu czastek bo na sciany i erytrocyty)
 //do plikow zrzucamy poza pozycja tez typ czastek
 //jak budowac ksztalty (np sciane naczynia)?
+
+//parametry z pracy habilitacyjnej prof Boryczki
+//tam też algo podziału na celki

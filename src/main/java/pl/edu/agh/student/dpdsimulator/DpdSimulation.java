@@ -88,7 +88,7 @@ public class DpdSimulation implements Simulation {
     private void initDropletParameters(){
         float gamma = 0.075f * 0.075f / 2.0f / boltzmanConstant / 293.1f;
         DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);        
-        float gamma2 = 0.075f * 0.075f / 2.0f / (float)1.3806488e-23 / 293.1f;
+        float gamma2 = gamma;
         DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma2);        
         dropletParameters = DropletParameters.buildBuffer(context);
     }
