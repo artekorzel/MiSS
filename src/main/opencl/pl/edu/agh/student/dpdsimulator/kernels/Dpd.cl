@@ -62,6 +62,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];
     
+    DropletParameter dropletParameter = params[types[dropletId]];
+    
     for(int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
         if(neighbourId != dropletId) {
             float3 neighbourPosition = positions[neighbourId];
@@ -71,12 +73,12 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                 float weightDValue = weightRValue * weightRValue;
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
 
-                conservativeForce += params[types[dropletId]].repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
+                conservativeForce += dropletParameter.repulsionParameter * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                dissipativeForce += params[types[dropletId]].gamma * weightDValue * normalizedPositionVector
+                dissipativeForce += dropletParameter.gamma * weightDValue * normalizedPositionVector
                         * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
-                randomForce += params[types[dropletId]].sigma * weightRValue * normalizedPositionVector
+                randomForce += dropletParameter.sigma * weightRValue * normalizedPositionVector
                         * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
             }
         }
