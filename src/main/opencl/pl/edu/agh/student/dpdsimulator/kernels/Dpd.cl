@@ -116,6 +116,37 @@ kernel void generateTube(global float3* vector, global int* types, int numberOfD
     
 }
 
+kernel void generateTubeFromDroplets(global float3* vector, global int* types, int numberOfDroplets, int type,
+    int initialSeed, float radiusIn, float radiusOut, float height){
+    
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }  
+    
+    types[dropletId] = type;
+    int seed = calculateHash(dropletId, initialSeed);
+    
+    float x = (rand(&seed, 1) * 2 - 1) * (radiusOut);
+    float y = rand(&seed, 1) * height - height/2;
+    float z;
+    float rangeOut = sqrt(radiusOut*radiusOut - x*x);
+    float rangeIn = sqrt(radiusIn*radiusIn - x*x);
+    if(fabs(x) > radiusIn){        
+        z = (rand(&seed, 1) * 2 - 1) * rangeOut;
+    } else {
+        z = (rand(&seed, 1) * 2 - 1) * rangeOut * (rangeOut - rangeIn);
+        if(z < 0){
+            z -= rangeIn;
+        } else {
+            z += rangeIn;
+        }
+    }
+        
+    vector[dropletId] = ((float3) (x, y, z));
+    
+    
+}
 
 
 kernel void generateRandomVector(global float3* vector, float range, int numberOfDroplets, int initialSeed) {

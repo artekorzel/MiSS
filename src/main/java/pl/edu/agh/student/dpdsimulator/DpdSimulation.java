@@ -93,10 +93,14 @@ public class DpdSimulation implements Simulation {
         dropletParameters = DropletParameters.buildBuffer(context);
     }
     
-    private CLEvent initPositionsAndVelocities() {        
-        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, boxSize,
-                    1, random.nextInt(numberOfDroplets), 0.4f, 1.0f, globalSizes, null);
-//                dpdKernel.generateRandomVector(queue, positions, boxSize,
+    private CLEvent initPositionsAndVelocities() {  
+        
+        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets, 
+                    1, random.nextInt(numberOfDroplets), 0.4f ,0.5f , 1.0f, globalSizes, null);
+//      
+//        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, boxSize,
+//                    1, random.nextInt(numberOfDroplets), 0.4f, 1.0f, globalSizes, null);
+////                dpdKernel.generateRandomVector(queue, positions, boxSize,
 //                numberOfDroplets, random.nextInt(numberOfDroplets), globalSizes, null);
         return dpdKernel.generateRandomVector(queue, velocities, boxSize, numberOfDroplets,
                 random.nextInt(numberOfDroplets), globalSizes, null, generatePositionsEvent);
