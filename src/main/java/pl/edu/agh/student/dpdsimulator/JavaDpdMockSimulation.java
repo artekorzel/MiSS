@@ -70,7 +70,7 @@ public class JavaDpdMockSimulation implements Simulation {
     }
 
     private void performSingleStep() {
-        for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
+        for (int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
 //            writeGaussianRandoms();
 //            calculateForces(dropletId);
 //            calculateNewPositionsAndPredictedVelocities(dropletId);
@@ -126,5 +126,3 @@ public class JavaDpdMockSimulation implements Simulation {
         }
     }
 }
-
-

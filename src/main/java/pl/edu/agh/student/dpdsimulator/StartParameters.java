@@ -1,6 +1,7 @@
 package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
+
     int numberOfSteps = 100;
     int numberOfDroplets = 10000;
     float deltaTime = 0.04f;

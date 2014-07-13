@@ -72,7 +72,7 @@ public class JavaDpdMock {
     }
 
     static float[] calculateConservativeForce(float[][] positions, float cutoffRadius,
-                                              float repulsionParameter, int numberOfDroplets, int dropletId) {
+            float repulsionParameter, int numberOfDroplets, int dropletId) {
 
         float[] conservativeForce = new float[]{0.0f, 0.0f, 0.0f};
         for (int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
@@ -91,7 +91,7 @@ public class JavaDpdMock {
     }
 
     static float[] calculateDissipativeForce(float[][] positions, float[][] velocities,
-                                             float cutoffRadius, float gamma, int numberOfDroplets, int dropletId) {
+            float cutoffRadius, float gamma, int numberOfDroplets, int dropletId) {
 
         float[] dissipativeForce = new float[]{0.0f, 0.0f, 0.0f};
         for (int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
@@ -111,7 +111,7 @@ public class JavaDpdMock {
     }
 
     static float[] calculateRandomForce(float[][] positions, float[] gaussianRandoms,
-                                        float cutoffRadius, float sigma, int numberOfDroplets, int dropletId) {
+            float cutoffRadius, float sigma, int numberOfDroplets, int dropletId) {
 
         float[] randomForce = new float[]{0.0f, 0.0f, 0.0f};
         for (int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
@@ -131,7 +131,7 @@ public class JavaDpdMock {
     }
 
     static float[] calculateForce(float[][] positions, float[][] velocities, float[] gaussianRandoms,
-                                  float gamma, float sigma, float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
+            float gamma, float sigma, float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
 
         float[] conservativeForce = calculateConservativeForce(positions,
                 cutoffRadius, repulsionParameter, numberOfDroplets, dropletId);
@@ -150,8 +150,8 @@ public class JavaDpdMock {
     }
 
     public static void calculateForces(float[][] positions, float[][] velocities, float[][] forces,
-                                       float[] gaussianRandoms, float gamma, float sigma,
-                                       float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
+            float[] gaussianRandoms, float gamma, float sigma,
+            float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
 
         float[] newForce = calculateForce(positions, velocities, gaussianRandoms, gamma, sigma, cutoffRadius,
                 numberOfDroplets, repulsionParameter, dropletId);
@@ -159,8 +159,8 @@ public class JavaDpdMock {
     }
 
     public static void calculateNewPositionsAndPredictedVelocities(float[][] positions, float[][] velocities,
-                                                                   float[][] forces, float[][] newPositions, float[][] predictedVelocities,
-                                                                   float deltaTime, float lambda, float boxSize, int dropletId) {
+            float[][] forces, float[][] newPositions, float[][] predictedVelocities,
+            float deltaTime, float lambda, float boxSize, int dropletId) {
 
         float[] newPosition = new float[VEC_SIZE];
         for (int i = 0; i < VEC_SIZE; ++i) {
@@ -173,9 +173,9 @@ public class JavaDpdMock {
     }
 
     public static void calculateNewVelocities(float[][] newPositions, float[][] velocities,
-                                              float[][] predictedVelocities, float[][] newVelocities, float[][] forces,
-                                              float[] gaussianRandoms, float deltaTime, float gamma, float sigma,
-                                              float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
+            float[][] predictedVelocities, float[][] newVelocities, float[][] forces,
+            float[] gaussianRandoms, float deltaTime, float gamma, float sigma,
+            float cutoffRadius, int numberOfDroplets, float repulsionParameter, int dropletId) {
 
         float[] predictedForce = calculateForce(newPositions, predictedVelocities, gaussianRandoms, gamma, sigma,
                 cutoffRadius, numberOfDroplets, repulsionParameter, dropletId);

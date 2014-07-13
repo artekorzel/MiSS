@@ -10,7 +10,6 @@ import static pl.edu.agh.student.dpdsimulator.StartParameters.*;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd.DropletParameter;
 
-
 public class DpdSimulation implements Simulation {
 
     public static final int VECTOR_SIZE = 4;
@@ -43,7 +42,7 @@ public class DpdSimulation implements Simulation {
         context = JavaCL.createBestContext();
         queue = context.createDefaultQueue();
 
-        random = new Random();       
+        random = new Random();
         positions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         velocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
@@ -54,7 +53,7 @@ public class DpdSimulation implements Simulation {
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         //dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, DropletParameter.class, 10L);               
-        
+
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
         int noOfReductionKernels = 1;
@@ -65,9 +64,9 @@ public class DpdSimulation implements Simulation {
     }
 
     private void performSimulation() {
-        
+
         CLEvent loopEndEvent = initPositionsAndVelocities();
-        initDropletParameters();        
+        initDropletParameters();
 //        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
 //        printVectors("\nVelocities", "vel", queue, velocities, loopEndEvent);
         printParams();
@@ -76,7 +75,7 @@ public class DpdSimulation implements Simulation {
             System.out.println("Step: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
 //            printAverageVelocity(loopEndEvent);
-            writePositionsFile(newPositions, loopEndEvent);            
+            writePositionsFile(newPositions, loopEndEvent);
 //            printVectors("\nPositions", "pos", queue, newPositions, loopEndEvent);
 //            printVectors("\nVelocities", "vel", queue, newVelocities, loopEndEvent);
 //            printVectors("\nForces", "force", queue, forces, loopEndEvent);
@@ -85,18 +84,17 @@ public class DpdSimulation implements Simulation {
         }
     }
 
-    private void initDropletParameters(){
+    private void initDropletParameters() {
         float gamma = 0.075f * 0.075f / 2.0f / boltzmanConstant / 293.1f;
-        DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);        
-        float gamma2 = gamma;
-        DropletParameters.addParameter(293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma2);        
+        DropletParameters.addParameter(2, 293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);
+        DropletParameters.addParameter(1, 293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);
         dropletParameters = DropletParameters.buildBuffer(context);
     }
-    
-    private CLEvent initPositionsAndVelocities() {  
-        
-        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets, 
-                    1, random.nextInt(numberOfDroplets), 0.4f ,0.5f , 1.0f, globalSizes, null);
+
+    private CLEvent initPositionsAndVelocities() {
+
+        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets,
+                1, random.nextInt(numberOfDroplets), 0.4f, 0.5f, 1.0f, globalSizes, null);
 //      
 //        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, boxSize,
 //                    1, random.nextInt(numberOfDroplets), 0.4f, 1.0f, globalSizes, null);
@@ -124,7 +122,7 @@ public class DpdSimulation implements Simulation {
 
     private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities,
-                forces, dropletParameters, types, deltaTime, cutoffRadius, numberOfDroplets, step + initialRandom, 
+                forces, dropletParameters, types, deltaTime, cutoffRadius, numberOfDroplets, step + initialRandom,
                 globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
     }
 
@@ -179,10 +177,10 @@ public class DpdSimulation implements Simulation {
         }
         out.release();
     }
-    
-    private void printParams(){
+
+    private void printParams() {
         Pointer<DropletParameter> out = dropletParameters.read(queue);
-        for(int i = 0; i < 2; i++){
+        for (int i = 0; i < 2; i++) {
             System.out.println(i + ": " + out.get(i).gamma());
         }
     }
