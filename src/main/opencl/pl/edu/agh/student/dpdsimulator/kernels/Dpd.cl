@@ -104,7 +104,8 @@ kernel void generateTube(global float3* vector, global int* types, int numberOfD
     float rangeOut = sqrt(radiusOut * radiusOut - x * x);
     float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
     
-    if (fabs(x) >= radiusIn || fabs(z) >= radiusIn) {
+    float distanceFromY = sqrt(x * x + z * z);
+    if (distanceFromY >= radiusIn) {
         types[dropletId] = 0;
     } else {
         float randomNum = rand(&seed, 1);
