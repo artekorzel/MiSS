@@ -16,7 +16,7 @@ float weightR(float distanceValue, float cutoffRadius) {
 }
 
 float3 normalizePosition(float3 vector, float boxSize) {
-    return fmod(fmod(vector + boxSize, 2.0 * boxSize) + 2.0 * boxSize, 2.0 * boxSize) - boxSize;
+    return fmod(fmod(vector + boxSize, 2.0f * boxSize) + 2.0f * boxSize, 2.0f * boxSize) - boxSize;
 }
 
 int calculateHash(int d1, int d2) {    
@@ -75,7 +75,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
 
                 conservativeForce += dropletParameter.repulsionParameter 
-                        * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
+                        * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
                 dissipativeForce += dropletParameter.gamma * weightDValue * normalizedPositionVector
                         * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
@@ -189,7 +189,7 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
     float dropletMass = dropletParameter.mass;
 
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity
-            + 0.5 * deltaTime * deltaTime * dropletForce / dropletMass;
+            + 0.5f * deltaTime * deltaTime * dropletForce / dropletMass;
             
     newPositions[dropletId] = normalizePosition(newPosition, boxSize);
     
@@ -210,7 +210,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
     float3 predictedForce = calculateForce(newPositions, predictedVelocities, params, 
             types, cutoffRadius,  numberOfDroplets, dropletId, step);
 
-    newVelocities[dropletId] = velocities[dropletId] + 0.5 * deltaTime 
+    newVelocities[dropletId] = velocities[dropletId] + 0.5f * deltaTime 
             * (forces[dropletId] + predictedForce) / params[types[dropletId]].mass;
 }
 
