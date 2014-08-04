@@ -2,13 +2,13 @@ package pl.edu.agh.student.dpdsimulator;
 
 public interface StartParameters {
 
-    int numberOfSteps = 100;
+    int numberOfSteps = 10;
     int numberOfDroplets = 10000;
-    float deltaTime = 0.04f;
-    float cutoffRadius = 0.01f;
-    float boxSize = 1.0f;
-    float velocityInitRange = 1.0f;
-    float boltzmanConstant = 1 / 293.1f;/*(float) 1.3806488e-23;*/
+    float deltaTime = 1.0f;
+    float cutoffRadius = 0.99f;
+    float boxSize = 26.0f;
+    float velocityInitRange = 0.05f;
+    float boltzmanConstant = 1 / 310.0f;/*(float) 1.3806488e-23;*/
 
 }
 

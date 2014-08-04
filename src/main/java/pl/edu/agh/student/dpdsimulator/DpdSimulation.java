@@ -66,10 +66,12 @@ public class DpdSimulation implements Simulation {
     private void performSimulation() {
 
         CLEvent loopEndEvent = initPositionsAndVelocities();
+        step = 0;
+        writePositionsFile(positions, loopEndEvent);
         initDropletParameters();
 //        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
 //        printVectors("\nVelocities", "vel", queue, velocities, loopEndEvent);
-        printParams();
+//        printParams();
         initialRandom = random.nextInt();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("Step: " + step);
@@ -85,21 +87,17 @@ public class DpdSimulation implements Simulation {
     }
 
     private void initDropletParameters() {
-        float gamma = 0.075f * 0.075f / 2.0f / boltzmanConstant / 293.1f;
-        DropletParameters.addParameter(2, 293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);
-        DropletParameters.addParameter(1, 293.1f, 3.0f, 75.0f, 0.5f, 0.075f, gamma);
+        DropletParameters.addParameter(2, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
+        DropletParameters.addParameter(1.14f, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
+        DropletParameters.addParameter(1, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
         dropletParameters = DropletParameters.buildBuffer(context);
     }
 
     private CLEvent initPositionsAndVelocities() {
-
-        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets,
-                1, random.nextInt(numberOfDroplets), 0.4f, 0.5f, 1.0f, globalSizes, null);
-//      
-//        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, boxSize,
-//                    1, random.nextInt(numberOfDroplets), 0.4f, 1.0f, globalSizes, null);
-////                dpdKernel.generateRandomVector(queue, positions, boxSize,
-//                numberOfDroplets, random.nextInt(numberOfDroplets), globalSizes, null);
+//        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets,
+//                0, random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, 
+                /*random.nextInt(numberOfDroplets)*/1, 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
         return dpdKernel.generateRandomVector(queue, velocities, boxSize, numberOfDroplets,
                 random.nextInt(numberOfDroplets), globalSizes, null, generatePositionsEvent);
     }

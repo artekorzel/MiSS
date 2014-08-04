@@ -89,30 +89,33 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     return conservativeForce + dissipativeForce + randomForce;
 }
 
-bool isInsideTube(float3 position, float radius, float height){
-    if(fabs(position.y) < height && sqrt(position.x * position.x + position.z * position.z) < radius){
-        return true;
-    }
-    return false;
-}
-
-kernel void generateTube(global float3* vector, global int* types, int numberOfDroplets, float range, 
-        int type, int initialSeed, float radius, float height) {
+kernel void generateTube(global float3* vector, global int* types, int numberOfDroplets, 
+        int initialSeed, float radiusIn, float radiusOut, float height) {
     
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
-    int seed = calculateHash(dropletId, initialSeed);
-    float x = rand(&seed, 1) * 2 - 1;
-    float y = rand(&seed, 1) * 2 - 1;
-    float z = rand(&seed, 1) * 2 - 1;
-    vector[dropletId] = ((float3) (x, y, z)) * range;
-    if(isInsideTube(vector[dropletId], radius, height)){
-        types[dropletId] = type;
-    } else {
+    
+    int seed = calculateHash(dropletId, initialSeed);   
+    
+    float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
+    float y = rand(&seed, 1) * height - height/2;
+    float rangeOut = sqrt(radiusOut * radiusOut - x * x);
+    float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
+    
+    if (fabs(x) >= radiusIn || fabs(z) >= radiusIn) {
         types[dropletId] = 0;
+    } else {
+        float randomNum = rand(&seed, 1);
+        if (randomNum >= 0.5f) {
+            types[dropletId] = 1;    
+        } else {
+            types[dropletId] = 2;
+        }        
     }
+        
+    vector[dropletId] = (float3) (x, y, z);
 }
 
 kernel void generateTubeFromDroplets(global float3* vector, global int* types, int numberOfDroplets, 
@@ -121,7 +124,7 @@ kernel void generateTubeFromDroplets(global float3* vector, global int* types, i
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
-    }  
+    }
     
     types[dropletId] = type;
     int seed = calculateHash(dropletId, initialSeed);
