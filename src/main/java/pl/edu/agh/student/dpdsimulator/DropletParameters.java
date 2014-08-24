@@ -9,18 +9,17 @@ import pl.edu.agh.student.dpdsimulator.kernels.Dpd.DropletParameter;
 
 public class DropletParameters {
 
-    static ArrayList<DropletParameter> parameters = new ArrayList<>();
+    private static ArrayList<DropletParameter> parameters = new ArrayList<>();
 
-    public static void addParameter(float mass, float temperature, float density, 
-            float repulsionParameter, float lambda, float sigma, float gamma) {
+    public static void addParameter(float mass, float density, float repulsionParameter, float lambda, float sigma, float gamma, float velocityInitRange) {
         DropletParameter dropletParameter = new DropletParameter();
         dropletParameter.mass(mass);
-        dropletParameter.temperature(temperature);
         dropletParameter.density(density);
         dropletParameter.repulsionParameter(repulsionParameter);
         dropletParameter.lambda(lambda);
         dropletParameter.sigma(sigma);
         dropletParameter.gamma(gamma);
+        dropletParameter.velocityInitRange(velocityInitRange);
 
         parameters.add(dropletParameter);
     }

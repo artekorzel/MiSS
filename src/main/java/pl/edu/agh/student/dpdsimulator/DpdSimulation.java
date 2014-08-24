@@ -64,14 +64,13 @@ public class DpdSimulation implements Simulation {
     }
 
     private void performSimulation() {
+        step = 0;
+        initDropletParameters();
 
         CLEvent loopEndEvent = initPositionsAndVelocities();
-        step = 0;
         writePositionsFile(positions, loopEndEvent);
-        initDropletParameters();
 //        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
 //        printVectors("\nVelocities", "vel", queue, velocities, loopEndEvent);
-//        printParams();
         initialRandom = random.nextInt();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("Step: " + step);
@@ -87,18 +86,26 @@ public class DpdSimulation implements Simulation {
     }
 
     private void initDropletParameters() {
-        DropletParameters.addParameter(2, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
-        DropletParameters.addParameter(1.14f, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
-        DropletParameters.addParameter(1, 310.0f, 4.0f, 75.0f, 0.63f, 0.075f, 1.5f);
+        float density = 3.0f;
+        float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;        
+        float lambda = 0.63f;
+        float sigma = 0.075f;
+        float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
+        float velocityInitRange = 0.05f;
+        
+        //naczynie
+        DropletParameters.addParameter(4, density, repulsionParameter, lambda, sigma, gamma, 0.0f);
+        //krwinka
+        DropletParameters.addParameter(1.14f, density, repulsionParameter, lambda, sigma, gamma, velocityInitRange);
+        //osocze
+        DropletParameters.addParameter(1, density, repulsionParameter, lambda, sigma, gamma, velocityInitRange);
         dropletParameters = DropletParameters.buildBuffer(context);
     }
 
     private CLEvent initPositionsAndVelocities() {
-//        CLEvent generatePositionsEvent = dpdKernel.generateTubeFromDroplets(queue, positions, types, numberOfDroplets,
-//                0, random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, 
-                /*random.nextInt(numberOfDroplets)*/1, 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
-        return dpdKernel.generateRandomVector(queue, velocities, boxSize, numberOfDroplets,
+                random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+        return dpdKernel.generateVelocities(queue, velocities, dropletParameters, types, numberOfDroplets,
                 random.nextInt(numberOfDroplets), globalSizes, null, generatePositionsEvent);
     }
 

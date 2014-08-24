@@ -1,11 +1,11 @@
 typedef struct DropletParameter {
     float mass;
-    float temperature;
     float density;
     float repulsionParameter;
     float lambda;
     float sigma;
     float gamma;
+    float velocityInitRange;
 } DropletParameter;
 
 float weightR(float distanceValue, float cutoffRadius) {
@@ -119,37 +119,8 @@ kernel void generateTube(global float3* vector, global int* types, int numberOfD
     vector[dropletId] = (float3) (x, y, z);
 }
 
-kernel void generateTubeFromDroplets(global float3* vector, global int* types, int numberOfDroplets, 
-        int type, int initialSeed, float radiusIn, float radiusOut, float height) {
-    
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
-    
-    types[dropletId] = type;
-    int seed = calculateHash(dropletId, initialSeed);
-    
-    float x = (rand(&seed, 1) * 2 - 1) * (radiusOut);
-    float y = rand(&seed, 1) * height - height/2;
-    float z;
-    float rangeOut = sqrt(radiusOut*radiusOut - x*x);
-    float rangeIn = sqrt(radiusIn*radiusIn - x*x);
-    if(fabs(x) > radiusIn){        
-        z = (rand(&seed, 1) * 2 - 1) * rangeOut;
-    } else {
-        z = (rand(&seed, 1) * 2 - 1) * rangeOut * (rangeOut - rangeIn);
-        if(z < 0){
-            z -= rangeIn;
-        } else {
-            z += rangeIn;
-        }
-    }
-        
-    vector[dropletId] = ((float3) (x, y, z));
-}
-
-kernel void generateRandomVector(global float3* vector, float range, int numberOfDroplets, int initialSeed) {
+kernel void generateVelocities(global float3* velocities, global DropletParameter* params, 
+        global int* types, int numberOfDroplets, int initialSeed) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -160,7 +131,7 @@ kernel void generateRandomVector(global float3* vector, float range, int numberO
     float x = rand(&seed, 1) * 2 - 1;
     float y = rand(&seed, 1) * 2 - 1;
     float z = rand(&seed, 1) * 2 - 1;
-    vector[dropletId] = ((float3) (x, y, z)) * range;
+    velocities[dropletId] = ((float3) (x, y, z)) * params[types[dropletId]].velocityInitRange;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
