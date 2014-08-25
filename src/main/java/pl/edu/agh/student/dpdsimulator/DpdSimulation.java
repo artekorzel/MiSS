@@ -91,7 +91,7 @@ public class DpdSimulation implements Simulation {
         float lambda = 0.63f;
         float sigma = 0.075f;
         float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
-        float velocityInitRange = 0.05f;
+        float velocityInitRange = 0.0f;
         
         //naczynie
         DropletParameters.addParameter(4, density, repulsionParameter, lambda, sigma, gamma, 0.0f);
@@ -103,10 +103,50 @@ public class DpdSimulation implements Simulation {
     }
 
     private CLEvent initPositionsAndVelocities() {
-        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, 
-                random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+//        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, 
+//                random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+        long t = System.nanoTime();
+        generateTube();
+        System.out.println("time: " + (System.nanoTime() - t));
         return dpdKernel.generateVelocities(queue, velocities, dropletParameters, types, numberOfDroplets,
-                random.nextInt(numberOfDroplets), globalSizes, null, generatePositionsEvent);
+                random.nextInt(numberOfDroplets), globalSizes, null);//, generatePositionsEvent
+    }
+    
+    private void generateTube() {
+        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
+        Pointer<Integer> typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets);
+        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
+        float radiusIn = 0.4f * boxSize;
+        float radiusOut = 0.5f * boxSize;
+        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
+            float x = nextRandomFloat(radiusOut);
+            float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
+            float y = nextRandomFloat(boxSize) / 2;
+            
+            positionsPointer.set(i, x);
+            positionsPointer.set(i + 1, y);
+            positionsPointer.set(i + 2, z);
+            positionsPointer.set(i + 3, 0.0f);
+            
+            float distanceFromY = (float) Math.sqrt(x * x + z * z);
+            int dropletId = i / 4;
+            if (distanceFromY >= radiusIn) {
+                typesPointer.set(dropletId, 0);
+            } else {
+                float randomNum = nextRandomFloat(1);
+                if (randomNum >= 0.0f) {
+                    typesPointer.set(dropletId, 1);
+                } else {
+                    typesPointer.set(dropletId, 2);
+                }        
+            }
+        }
+        positions = context.createBuffer(CLMem.Usage.InputOutput, positionsPointer);
+        types = context.createBuffer(CLMem.Usage.InputOutput, typesPointer);
+    }
+
+    private float nextRandomFloat(float range) {
+        return random.nextFloat() * 2 * range - range;
     }
 
     private CLEvent performSingleStep(CLEvent previousStepEvent) {

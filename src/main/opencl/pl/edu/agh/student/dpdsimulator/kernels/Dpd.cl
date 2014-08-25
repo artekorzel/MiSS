@@ -97,25 +97,26 @@ kernel void generateTube(global float3* vector, global int* types, int numberOfD
         return;
     }
     
+    float x, y, z;
     int seed = calculateHash(dropletId, initialSeed);   
-    
-    float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
-    float y = rand(&seed, 1) * height - height/2;
+    //y = seed;
+    x = rand(&seed, 1) * radiusOut;
+    y = rand(&seed, 10) * height / 2;
     float rangeOut = sqrt(radiusOut * radiusOut - x * x);
-    float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
+    z = rand(&seed, 100) * rangeOut;
     
     float distanceFromY = sqrt(x * x + z * z);
     if (distanceFromY >= radiusIn) {
         types[dropletId] = 0;
     } else {
         float randomNum = rand(&seed, 1);
-        if (randomNum >= 0.5f) {
+        if (randomNum >= 0.0f) {
             types[dropletId] = 1;    
         } else {
             types[dropletId] = 2;
         }        
     }
-        
+    
     vector[dropletId] = (float3) (x, y, z);
 }
 
