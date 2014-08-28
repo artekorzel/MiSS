@@ -63,7 +63,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];
     
-    DropletParameter dropletParameter = params[types[dropletId]];
+    int dropletType = types[dropletId];
+    DropletParameter dropletParameter = params[dropletType];
     
     for(int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
         if(neighbourId != dropletId) {
@@ -72,9 +73,10 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
             if(distanceValue < cutoffRadius) {
                 float weightRValue = weightR(distanceValue, cutoffRadius);
                 float weightDValue = weightRValue * weightRValue;
-                float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
+                float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);                
+                DropletParameter neighbourParameter = params[types[neighbourId]];
 
-                conservativeForce += dropletParameter.repulsionParameter 
+                conservativeForce += sqrt(dropletParameter.repulsionParameter * neighbourParameter.repulsionParameter)
                         * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
                 dissipativeForce += dropletParameter.gamma * weightDValue * normalizedPositionVector
@@ -86,53 +88,11 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         }
     }
 
-    return conservativeForce + dissipativeForce + randomForce;
-}
-
-kernel void generateTube(global float3* vector, global int* types, int numberOfDroplets, 
-        int initialSeed, float radiusIn, float radiusOut, float height) {
-    
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
+    float3 force = conservativeForce + dissipativeForce + randomForce;
+    if(dropletType != 0) {
+        force += (float3)(0.0f, 1.0f, 0.0f);
     }
-    
-    float x, y, z;
-    int seed = calculateHash(dropletId, initialSeed);   
-    //y = seed;
-    x = rand(&seed, 1) * radiusOut;
-    y = rand(&seed, 10) * height / 2;
-    float rangeOut = sqrt(radiusOut * radiusOut - x * x);
-    z = rand(&seed, 100) * rangeOut;
-    
-    float distanceFromY = sqrt(x * x + z * z);
-    if (distanceFromY >= radiusIn) {
-        types[dropletId] = 0;
-    } else {
-        float randomNum = rand(&seed, 1);
-        if (randomNum >= 0.0f) {
-            types[dropletId] = 1;    
-        } else {
-            types[dropletId] = 2;
-        }        
-    }
-    
-    vector[dropletId] = (float3) (x, y, z);
-}
-
-kernel void generateVelocities(global float3* velocities, global DropletParameter* params, 
-        global int* types, int numberOfDroplets, int initialSeed) {
-
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
-    
-    int seed = calculateHash(dropletId, initialSeed);
-    float x = rand(&seed, 1) * 2 - 1;
-    float y = rand(&seed, 1) * 2 - 1;
-    float z = rand(&seed, 1) * 2 - 1;
-    velocities[dropletId] = ((float3) (x, y, z)) * params[types[dropletId]].velocityInitRange;
+    return force;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
