@@ -70,7 +70,6 @@ public class DpdSimulation implements Simulation {
     private void performSimulation() {
         step = 0;
         initDropletParameters();
-
         CLEvent loopEndEvent = initPositionsAndVelocities();
         writePositionsFile(positions, loopEndEvent);
 //        printVectors("\nPositions", "pos", queue, positions, loopEndEvent);
@@ -93,15 +92,15 @@ public class DpdSimulation implements Simulation {
         float lambda = 0.63f;
         float sigma = 0.075f;
         float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
-        float velocityInitRange = 0.0f;
         
         //naczynie
-        float density = 12.0f;
+        float density = 12000.0f;
         float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;    
         addParameter(4, density, repulsionParameter, lambda, sigma, gamma, 0.0f);
         
-        density = 3.0f;
-        repulsionParameter = 75.0f * boltzmanConstant * temperature / density;   
+        density /= 4.0f;
+        repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
+        float velocityInitRange = 0.05f;
         //krwinka
         addParameter(1.14f, density, repulsionParameter, lambda, sigma, gamma, velocityInitRange);
         //osocze
@@ -132,7 +131,7 @@ public class DpdSimulation implements Simulation {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
         typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets);
         Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
-        float radiusIn = 0.8f * boxSize;
+        float radiusIn = 0.75f * boxSize;
         float radiusOut = 0.95f * boxSize;
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             float x = nextRandomFloat(radiusOut);
@@ -167,9 +166,11 @@ public class DpdSimulation implements Simulation {
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             int dropletId = i / 4;
             float velocityInitRange = parameters.get(typesPointer.get(dropletId)).velocityInitRange();
-            float x = nextRandomFloat(velocityInitRange);
-            float y = nextRandomFloat(velocityInitRange);
-            float z = nextRandomFloat(velocityInitRange);            
+            float x = nextRandomFloat(thermalVelocity);
+            float y = velocityInitRange == 0
+                    ? nextRandomFloat(thermalVelocity)
+                    : (nextRandomFloat(velocityInitRange) + velocityInitRange) / 2;
+            float z = nextRandomFloat(thermalVelocity);            
             
             velocitiesPointer.set(i, x);
             velocitiesPointer.set(i + 1, y);
@@ -179,7 +180,8 @@ public class DpdSimulation implements Simulation {
         velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
     }
         
-    public void addParameter(float mass, float density, float repulsionParameter, float lambda, float sigma, float gamma, float velocityInitRange) {
+    public void addParameter(float mass, float density, float repulsionParameter, 
+            float lambda, float sigma, float gamma, float velocityInitRange) {
         DropletParameter dropletParameter = new DropletParameter();
         dropletParameter.mass(mass);
         dropletParameter.density(density);
@@ -198,7 +200,8 @@ public class DpdSimulation implements Simulation {
 
     private CLEvent performSingleStep(CLEvent previousStepEvent) {
         CLEvent forcesEvent = calculateForces(previousStepEvent);
-        CLEvent newPositionsAndPredictedVelocitiesEvent = calculateNewPositionsAndPredictedVelocities(forcesEvent);
+        CLEvent newPositionsAndPredictedVelocitiesEvent = 
+                calculateNewPositionsAndPredictedVelocities(forcesEvent);
         return calculateNewVelocities(newPositionsAndPredictedVelocitiesEvent);
     }
 

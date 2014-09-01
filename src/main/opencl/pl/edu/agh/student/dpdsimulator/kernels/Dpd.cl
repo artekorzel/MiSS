@@ -88,11 +88,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         }
     }
 
-    float3 force = conservativeForce + dissipativeForce + randomForce;
-    if(dropletType != 0) {
-        force += (float3)(0.0f, 1.0f, 0.0f);
-    }
-    return force;
+    return conservativeForce + dissipativeForce + randomForce;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
@@ -160,7 +156,7 @@ kernel void reductionVector(global float3* data, global float3* partialSums,
     }
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     int offset;
-    for(offset = get_global_size(0)/2; offset > 0; offset >>= 1){
+    for(offset = group_size/2; offset > 0; offset >>= 1){
         if(global_id < offset){
             partialSums[global_id] += partialSums[global_id + offset];
         }
