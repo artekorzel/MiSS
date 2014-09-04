@@ -36,12 +36,20 @@ public class DpdSimulation implements Simulation {
     private Pointer<Integer> typesPointer;
     private static List<DropletParameter> parameters = new ArrayList<>();
 
+    /**
+     * Inicjalizuje dane oraz wykonuje symulacj? przep?ywu cz?stek krwi
+     * @throws Exception 
+     */
     @Override
     public void run() throws Exception {
         initData();
         performSimulation();
     }
 
+    /**
+     * Alokuje pami?? na karcie graficznej dla potrzebnych struktur oraz tworzy obiekt kernela, dzi?ki któremu mo?emy wykonywa? operacje na karcie graficznej.
+     * @throws IOException 
+     */
     private void initData() throws IOException {
         context = JavaCL.createBestContext();
         queue = context.createDefaultQueue();
@@ -67,6 +75,9 @@ public class DpdSimulation implements Simulation {
         localSizes = new int[]{noOfReductionKernels};
     }
 
+    /**
+     * Wykonuje zdefiniowan? przez nas ilo?? kroków symulacji w kazdym kroku zapisuj?c dane do odpowiednich plików. 
+     */
     private void performSimulation() {
         step = 0;
         initDropletParameters();
@@ -88,6 +99,9 @@ public class DpdSimulation implements Simulation {
         }
     }
 
+    /**
+     * Tworzy parametry dla trzech typów cz?steczek wykorzystywanych w symulacji. Odpowiednio dla cz?stek ?ciany naczynia, osocza oraz czerwonych krwinek.
+     */
     private void initDropletParameters() {    
         float lambda = 0.63f;
         float sigma = 0.075f;
@@ -115,6 +129,10 @@ public class DpdSimulation implements Simulation {
         dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
 
+    /**
+     * Generuje naczynie krwiono?ne wraz z cz?steczkami znajduj?cymi sie wewn?trz oraz pocz?tkowe pr?dko?ci cz?stek.
+     * @return 
+     */
     private CLEvent initPositionsAndVelocities() {
 //        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, numberOfDroplets, 
 //                random.nextInt(numberOfDroplets), 0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
@@ -127,6 +145,11 @@ public class DpdSimulation implements Simulation {
         return null;
     }
     
+    /**
+     * Generuje naczynie krwiono?ne oraz cz?steczki znajduj?ce sie w jego wn?trzu. ?cian? naczynia zostaje 
+     * ka?da cz?stka w okre?lonej odleg?o?ci od ?rodka natomiast pozosta?e s? losowo wybierane jako osocze
+     * lub krwinka.
+     */
     private void generateTube() {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
         typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets);
@@ -160,6 +183,7 @@ public class DpdSimulation implements Simulation {
         types = context.createBuffer(CLMem.Usage.InputOutput, typesPointer);
     }
     
+    
     private void generateVelocities() {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
         Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
@@ -180,6 +204,16 @@ public class DpdSimulation implements Simulation {
         velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
     }
         
+    /**
+     * Dodaje do tablicy parametrów przetrzymywanej na karcie graficznej kolejny typ
+     * @param mass
+     * @param density
+     * @param repulsionParameter
+     * @param lambda
+     * @param sigma
+     * @param gamma
+     * @param velocityInitRange 
+     */
     public void addParameter(float mass, float density, float repulsionParameter, 
             float lambda, float sigma, float gamma, float velocityInitRange) {
         DropletParameter dropletParameter = new DropletParameter();
