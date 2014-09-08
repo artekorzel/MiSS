@@ -39,5 +39,5 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
         global DropletParameter* params, global int* types, float deltaTime, float cutoffRadius, 
         int numberOfDroplets, int step) - w kazdym kroku obliczaną są przewidywane prędkości siły a następnie na ich podstawie obliczane są prędkości jakie cząstki osiągają po danym kroku.
 
-ernel void reductionVector(global float3* data, global float3* partialSums, 
-        global float3* output, int dataLength) - funkcja obliczająca rownolegle średnią wartość energii układu.
+ernel void doVectorReduction(global float3* data, global float3* partialSums, 
+        global float3* output, int dataLength) - funkcja obliczająca rownolegle średnią prędkość wszystkich cząstek.

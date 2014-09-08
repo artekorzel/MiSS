@@ -64,7 +64,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>pl.edu.agh.student.dpdsimulator.SimulatorRunner</mainClass>
+                            <mainClass>pl.edu.agh.student.dpdsimulator.DpdSimulation</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
