@@ -1,43 +1,57 @@
-DPD.CL
+-- Uruchomienie --
 
-Struktura przetrzymująca parametry specyficzne dla typu cząstki.
+Projekt wykorzystuje mavena do zarządzania zależnościami. Sest on odpowiednio skonfigurowany, aby można całość uruchomić za pomocą polecenia: "mvn exec:java". 
+Można również wydać polecenie: "mvn package" w celu utworzenia pliku JAR wraz z zależnościami.
+
+Konfiguracja wartości parametrów następuje obecnie poprzez edycję klasy pl.edu.agh.student.dpdsimulator.DpdSimulation.
+
+Program generuje pliki wyjściowe w katalogu "../results_<timestamp>/" względem katalogu głównego projektu. Pliki te posiadają nazwy result<numer_kroku>.csv, w kolejnych liniach znajdują się współrzędne położenia po danym kroku obliczeń oraz typ cząstki.
+
+
+-- DPD.CL --
+
+1. Struktura przetrzymująca parametry specyficzne dla typu cząstki:
 
 struct DropletParameter:
 	float mass - masa cząstki
-	float density - gęstość
-	float repulsionParameter - odpychanie
+	float density - gęstość (wykorzystywana przy obliczaniu współczynnika odpychania)
+	float repulsionParameter - współczynnik odpychania
 	float lambda
 	float sigma
 	float gamma
-	float velocityInitRange
-
-float weightR(float distanceValue, float cutoffRadius) - funkcja przyjmuje odległość pomiędzy cząstkami oraz maksymalną odległość dla której powinna wykonywać obliczenia i zwraca wartość wagi dla siły konserwatywnej  
-
-float3 normalizePosition(float3 vector, float boxSize) - przyjmuje wektor pozycji i wielkość pudła obliczeniowego i zwraca znormalizowaną pozycję cząstki
-
-int calculateHash(int d1, int d2) - funkcja hashująca obliczająca hash dla pary cząstek na podstawie ich ID. Dzięki temu, jesteśmy dla każdej pary wygenerować taką samą wartość dla siły brownowskiej. Nie musimy trzymac tablicy współczynników w pamięci.
-
-float rand(int* seed, int step) - funkcja randomizująca z rozkładem liniowym
-
-float normalRand(float U1, float U2) - funkcja randomizująca z rozkładem normalnym
-
-float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) - funkcja randomizująca z rozkładem gaussa
-
-float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
-    global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) - funkcja obliczająca siłę działającą na daną cząstkę. Jako parametry przyjmuje wektor pozycji oraz prędkości, tablicę z parametrami typów oraz tablicę typów. Funkcja oblicza 3 składowe siły wyjściowej siłe konserwatywną, dyssypatywną oraz brownowską
-
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
-        global DropletParameter* params, global int* types, float cutoffRadius, int numberOfDroplets, int step) - metoda kernela uruchamiana w każdym kroku symulacji w celu wyznaczenia sił dla kazdej cząstki.
+	float velocityInitRange - współczynnik określający przedział losowania wartości początkowej prędkości
 
 
-kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
-        global float3* forces, global float3* newPositions, global float3* predictedVelocities,
-        global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, float boxSize) - funkcja generująca pozycję oraz przewidywane prędkości, które potem są weryfikowane. Przewidywane prędkości wykorzystywane sa przy obliczaniu sił cząstek w danym kroku.
+2. Funkcje:
 
-kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
-        global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
-        global DropletParameter* params, global int* types, float deltaTime, float cutoffRadius, 
-        int numberOfDroplets, int step) - w kazdym kroku obliczaną są przewidywane prędkości siły a następnie na ich podstawie obliczane są prędkości jakie cząstki osiągają po danym kroku.
+float weightR(float distanceValue, float cutoffRadius) - funkcja przyjmuje odległość pomiędzy cząstkami oraz maksymalną odległość dla której powinna wykonywać obliczenia i zwraca wartość wagi dla siły konserwatywnej.
 
-ernel void doVectorReduction(global float3* data, global float3* partialSums, 
-        global float3* output, int dataLength) - funkcja obliczająca rownolegle średnią prędkość wszystkich cząstek.
+
+float3 normalizePosition(float3 vector, float boxSize) - przyjmuje wektor pozycji i wielkość pudła obliczeniowego i zwraca pozycję cząstki znormalizowaną do wielkości pudła
+
+
+int calculateHash(int d1, int d2) - funkcja hashująca dla pary cząstek na podstawie ich ID. Dzięki niej jesteśmy w stanie dla danej pary wygenerować taką samą wartość współczynnika siły brownowskiej przy obliczeniach z punktu widzenia obu cząstek z pary, nie musimy przechowywać tablicy współczynników.
+
+
+float rand(int* seed, int step) - funkcja randomizująca z rozkładem liniowym na przedziale <-1; 1>
+
+
+float normalRand(float U1, float U2) - funkcja randomizująca z rozkładem normalnym na przedziale <-1; 1>
+
+
+float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) - funkcja randomizująca z rozkładem Gaussa na przedziale <-1; 1>
+
+
+float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params, global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) - funkcja obliczająca siłę działającą na daną cząstkę jako sumę 3 składowych siły wyjściowej: konserwatywnej, dyssypatywnej oraz brownowskiej dla każdej cząstki w odległości mniejszej, niż promień odcięcia (wyjątek stanowi oddziaływanie par cząstek ściany, dla których zastosowano prostszy algorytm symulujący przyciąganie cząstek).
+
+
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global DropletParameter* params, global int* types, float cutoffRadius, int numberOfDroplets, int step) - metoda kernela uruchamiana w każdym kroku symulacji w celu wyznaczenia sił dla kazdej cząstki.
+
+
+kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities, global float3* forces, global float3* newPositions, global float3* predictedVelocities, global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, float boxSize) - funkcja generująca pozycję oraz przewidywane prędkości, które potem są weryfikowane. Przewidywane prędkości wykorzystywane sa przy obliczaniu sił cząstek w danym kroku.
+
+
+kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities, global float3* predictedVelocities, global float3* newVelocities, global float3* forces, global DropletParameter* params, global int* types, float deltaTime, float cutoffRadius, int numberOfDroplets, int step) - w kazdym kroku obliczaną są przewidywane prędkości siły a następnie na ich podstawie obliczane są prędkości jakie cząstki osiągają po danym kroku.
+
+
+kernel void doVectorReduction(global float3* data, global float3* partialSums, global float3* output, int dataLength) - funkcja obliczająca rownolegle średnią prędkość wszystkich cząstek.

@@ -1,6 +1,5 @@
 typedef struct DropletParameter {
     float mass;
-    float density;
     float repulsionParameter;
     float lambda;
     float sigma;
@@ -73,10 +72,10 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
             if(distanceValue < cutoffRadius) {
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
                 int neighbourType = types[neighbourId];
-                /*if(dropletType == 0 && neighbourType == 0) {
+                if(dropletType == 0 && neighbourType == 0) {
                     conservativeForce += 10 * dropletParameter.repulsionParameter
                             * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
-                } else {*/
+                } else {
                     float weightRValue = weightR(distanceValue, cutoffRadius);
                     float weightDValue = weightRValue * weightRValue;
                     DropletParameter neighbourParameter = params[neighbourType];
@@ -89,7 +88,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
                     randomForce += dropletParameter.sigma * weightRValue * normalizedPositionVector
                             * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
-                //}
+                }
             }
         }
     }

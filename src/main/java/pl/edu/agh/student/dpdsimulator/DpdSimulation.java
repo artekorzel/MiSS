@@ -15,17 +15,33 @@ import pl.edu.agh.student.dpdsimulator.kernels.Dpd.DropletParameter;
 
 public class DpdSimulation {
 
-    public static final int VECTOR_SIZE = 4;
+    private static final int VECTOR_SIZE = 4;
 
     private static final int numberOfSteps = 50;
     private static final int numberOfDroplets = 100000;
     private static final float deltaTime = 1.0f;
-    private static final float cutoffRadius = 0.5f;
+    
+    private static final float cutoffRadius = 0.99f;
     private static final float boxSize = 16.0f;
+    private static final float radiusIn = 0.8f * boxSize;
+    private static final float radiusOut = 1.0f * boxSize;
+    
     private static final float temperature = 310.0f;
-    private static final float boltzmanConstant = 1 / temperature;
+    private static final float boltzmanConstant = 1f / temperature;
+    
+    private static final float lambda = 0.63f;
+    private static final float sigma = 0.075f;
+    private static final float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
+    
+    private static final float flowVelocity = 0.05f;
     private static final float thermalVelocity = 0.0036f;
-    private static List<DropletParameter> parameters = new ArrayList<>();
+    
+    private static final float vesselDensity = 12000.0f;
+    private static final float bloodDensity = 3000.0f;
+    
+    private static final float vesselMass = 4f;
+    private static final float bloodCellMass = 1.14f;
+    private static final float plasmaMass = 1f;
 
     private Random random;
     private CLBuffer<Float> positions;
@@ -44,6 +60,7 @@ public class DpdSimulation {
     private int[] globalSizes;
     private Pointer<Integer> typesPointer;
     
+    private List<DropletParameter> parameters = new ArrayList<>();
     private String directoryName;
     private int step;
     private int initialRandom;
@@ -100,10 +117,9 @@ public class DpdSimulation {
         initialRandom = random.nextInt();
         CLEvent loopEndEvent = null;
         for (step = 1; step <= numberOfSteps; ++step) {
-            System.out.println("Step: " + step);
+            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
-//            printAverageVelocity(loopEndEvent);
-            printVectors("Vel:", "vel", newVelocities, loopEndEvent);
+            printAverageVelocity(loopEndEvent);
             writePositionsFile(newPositions, loopEndEvent);
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
@@ -115,22 +131,15 @@ public class DpdSimulation {
      * odpowiednio dla czastek sciany naczynia, czerwonych krwinek oraz osocza.
      */
     private void initDropletParameters() {
-        float lambda = 0.63f;
-        float sigma = 0.075f;
-        float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
-
         //naczynie
-        float density = 3000.0f;
-        float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
-        addParameter(4, density, repulsionParameter, lambda, sigma, gamma, 0.0f);
+        float repulsionParameter = 75.0f * boltzmanConstant * temperature / vesselDensity;
+        addParameter(vesselMass, repulsionParameter, lambda, sigma, gamma, 0.0f);
 
-        density *= 4.0f;
-        repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
-        float velocityInitRange = 0.05f;
+        repulsionParameter = 75.0f * boltzmanConstant * temperature / bloodDensity;
         //krwinka
-        addParameter(1.14f, density, repulsionParameter, lambda, sigma, gamma, velocityInitRange);
+        addParameter(bloodCellMass, repulsionParameter, lambda, sigma, gamma, flowVelocity);
         //osocze
-        addParameter(1, density, repulsionParameter, lambda, sigma, gamma, velocityInitRange);
+        addParameter(plasmaMass, repulsionParameter, lambda, sigma, gamma, flowVelocity);
 
         long size = parameters.size();
         Pointer<DropletParameter> valuesPointer = Pointer.allocateArray(DropletParameter.class, size).order(context.getByteOrder());
@@ -139,6 +148,22 @@ public class DpdSimulation {
         }
 
         dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
+    }
+
+    /**
+     * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
+     */
+    private void addParameter(float mass, float repulsionParameter,
+            float lambda, float sigma, float gamma, float velocityInitRange) {
+        DropletParameter dropletParameter = new DropletParameter();
+        dropletParameter.mass(mass);
+        dropletParameter.repulsionParameter(repulsionParameter);
+        dropletParameter.lambda(lambda);
+        dropletParameter.sigma(sigma);
+        dropletParameter.gamma(gamma);
+        dropletParameter.velocityInitRange(velocityInitRange);
+
+        parameters.add(dropletParameter);
     }
 
     /**
@@ -159,8 +184,6 @@ public class DpdSimulation {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
         typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets);
         Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
-        float radiusIn = 0.8f * boxSize;
-        float radiusOut = 1.0f * boxSize;
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             float x = nextRandomFloat(radiusOut);
             float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
@@ -211,23 +234,6 @@ public class DpdSimulation {
             velocitiesPointer.set(i + 3, 0.0f);
         }
         velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
-    }
-
-    /**
-     * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
-     */
-    public void addParameter(float mass, float density, float repulsionParameter,
-            float lambda, float sigma, float gamma, float velocityInitRange) {
-        DropletParameter dropletParameter = new DropletParameter();
-        dropletParameter.mass(mass);
-        dropletParameter.density(density);
-        dropletParameter.repulsionParameter(repulsionParameter);
-        dropletParameter.lambda(lambda);
-        dropletParameter.sigma(sigma);
-        dropletParameter.gamma(gamma);
-        dropletParameter.velocityInitRange(velocityInitRange);
-
-        parameters.add(dropletParameter);
     }
 
     /**
@@ -324,18 +330,6 @@ public class DpdSimulation {
                 averageVelocity, numberOfDroplets, globalSizes, null, events);
         Pointer<Float> out = averageVelocity.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
-        out.release();
-    }
-    
-    private void printVectors(String intro, String name, CLBuffer<Float> buffer, CLEvent... events) {
-        System.out.println(intro);
-        Pointer<Float> out = buffer.read(queue, events);
-        for (int i = 0; i < /*numberOfDroplets*/1; i++) {
-            System.out.println(name + "[" + i + "] = ("
-                    + out.get(i * VECTOR_SIZE) + ", "
-                    + out.get(i * VECTOR_SIZE + 1) + ", "
-                    + out.get(i * VECTOR_SIZE + 2) + ")");
-        }
         out.release();
     }
 }
