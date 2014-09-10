@@ -22,9 +22,9 @@ public class DpdSimulation {
     private static final float deltaTime = 1.0f;
     
     private static final float cutoffRadius = 0.99f;
-    private static final float boxSize = 16.0f;
-    private static final float radiusIn = 0.8f * boxSize;
-    private static final float radiusOut = 1.0f * boxSize;
+    private static final float boxSize = 26.0f;
+    private static final float radiusIn = 0.75f * boxSize;
+    private static final float radiusOut = 0.95f * boxSize;
     
     private static final float temperature = 310.0f;
     private static final float boltzmanConstant = 1f / temperature;
@@ -36,8 +36,8 @@ public class DpdSimulation {
     private static final float flowVelocity = 0.05f;
     private static final float thermalVelocity = 0.0036f;
     
-    private static final float vesselDensity = 4000.0f;
-    private static final float bloodDensity = 4000.0f;
+    private static final float vesselDensity = 12000.0f;
+    private static final float bloodDensity = 3000.0f;
     
     private static final float vesselMass = 4f;
     private static final float bloodCellMass = 1.14f;
@@ -59,6 +59,8 @@ public class DpdSimulation {
     private Dpd dpdKernel;
     private int[] globalSizes;
     private Pointer<Integer> typesPointer;
+    private Pointer<Float> partialSumsPointer;
+    private Pointer<Float> averageVelocityPointer;
     
     private List<DropletParameter> parameters = new ArrayList<>();
     private String directoryName;
@@ -94,7 +96,9 @@ public class DpdSimulation {
         newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
+        partialSumsPointer = Pointer.allocateArray(Float.class, numberOfDroplets * VECTOR_SIZE).order(context.getByteOrder());
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
+        averageVelocityPointer = Pointer.allocateArray(Float.class, VECTOR_SIZE).order(context.getByteOrder());
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
 
         dpdKernel = new Dpd(context);
@@ -133,13 +137,13 @@ public class DpdSimulation {
     private void initDropletParameters() {
         //naczynie
         float repulsionParameter = 75.0f * boltzmanConstant * temperature / vesselDensity;
-        addParameter(vesselMass, repulsionParameter, lambda, sigma, gamma, 0.0f);
+        addParameter(vesselMass, repulsionParameter, lambda, sigma, gamma);
 
         repulsionParameter = 75.0f * boltzmanConstant * temperature / bloodDensity;
         //krwinka
-        addParameter(bloodCellMass, repulsionParameter, lambda, sigma, gamma, flowVelocity);
+        addParameter(bloodCellMass, repulsionParameter, lambda, sigma, gamma);
         //osocze
-        addParameter(plasmaMass, repulsionParameter, lambda, sigma, gamma, flowVelocity);
+        addParameter(plasmaMass, repulsionParameter, lambda, sigma, gamma);
 
         long size = parameters.size();
         Pointer<DropletParameter> valuesPointer = Pointer.allocateArray(DropletParameter.class, size).order(context.getByteOrder());
@@ -154,14 +158,13 @@ public class DpdSimulation {
      * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
      */
     private void addParameter(float mass, float repulsionParameter,
-            float lambda, float sigma, float gamma, float velocityInitRange) {
+            float lambda, float sigma, float gamma) {
         DropletParameter dropletParameter = new DropletParameter();
         dropletParameter.mass(mass);
         dropletParameter.repulsionParameter(repulsionParameter);
         dropletParameter.lambda(lambda);
         dropletParameter.sigma(sigma);
         dropletParameter.gamma(gamma);
-        dropletParameter.velocityInitRange(velocityInitRange);
 
         parameters.add(dropletParameter);
     }
@@ -182,8 +185,8 @@ public class DpdSimulation {
      */
     private void generateTube() {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets);
-        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
+        typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
+        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             float x = nextRandomFloat(radiusOut);
             float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
@@ -218,15 +221,19 @@ public class DpdSimulation {
      */
     private void generateVelocities() {
         int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates);
+        Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
         for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
             int dropletId = i / 4;
-            float velocityInitRange = parameters.get(typesPointer.get(dropletId)).velocityInitRange();
-            float x = nextRandomFloat(thermalVelocity);
-            float y = velocityInitRange == 0
-                    ? nextRandomFloat(thermalVelocity)
-                    : (nextRandomFloat(velocityInitRange) + velocityInitRange) / 2;
-            float z = nextRandomFloat(thermalVelocity);
+            float x, y, z;
+            if(typesPointer.get(dropletId) == 0) {
+                x = 0.0f;
+                y = 0.0f;
+                z = 0.0f;
+            } else {
+                x = nextRandomFloat(thermalVelocity);
+                y = (nextRandomFloat(flowVelocity) + flowVelocity) / 2.0f;
+                z = nextRandomFloat(thermalVelocity);
+            }
 
             velocitiesPointer.set(i, x);
             velocitiesPointer.set(i + 1, y);
@@ -326,8 +333,18 @@ public class DpdSimulation {
      * Oblicza i wypisuje informacje o predkosci sredniej wszystkich czasteczek
      */
     private void printAverageVelocity(CLEvent... events) {
+        for(int i = 0; i < VECTOR_SIZE; ++i) {
+            averageVelocityPointer.set(i, 0.0f);
+        }
+        
+        for(int i = 0; i < numberOfDroplets * VECTOR_SIZE; ++i) {
+            partialSumsPointer.set(i, 0.0f);
+        }
+        
+        CLEvent fillBuffers = averageVelocity.write(queue, averageVelocityPointer, true, events);
+        fillBuffers = partialSums.write(queue, partialSumsPointer, true, fillBuffers);
         CLEvent reductionEvent = dpdKernel.doVectorReduction(queue, newVelocities, partialSums,
-                averageVelocity, numberOfDroplets, globalSizes, null, events);
+                averageVelocity, numberOfDroplets, globalSizes, null, fillBuffers);
         Pointer<Float> out = averageVelocity.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
         out.release();
