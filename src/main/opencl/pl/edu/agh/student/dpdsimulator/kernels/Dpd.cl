@@ -1,11 +1,10 @@
 typedef struct DropletParameter {
     float mass;
-    float temperature;
-    float density;
     float repulsionParameter;
     float lambda;
     float sigma;
     float gamma;
+    float velocityInitRange;
 } DropletParameter;
 
 float weightR(float distanceValue, float cutoffRadius) {
@@ -63,103 +62,38 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];
     
-    DropletParameter dropletParameter = params[types[dropletId]];
+    int dropletType = types[dropletId];
+    DropletParameter dropletParameter = params[dropletType];
     
     for(int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
         if(neighbourId != dropletId) {
             float3 neighbourPosition = positions[neighbourId];
             float distanceValue = distance(neighbourPosition, dropletPosition);
             if(distanceValue < cutoffRadius) {
-                float weightRValue = weightR(distanceValue, cutoffRadius);
-                float weightDValue = weightRValue * weightRValue;
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
+                int neighbourType = types[neighbourId];
+                if(dropletType == 0 && neighbourType == 0) {
+                    conservativeForce += dropletParameter.repulsionParameter
+                            * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
+                } else {
+                    float weightRValue = weightR(distanceValue, cutoffRadius);
+                    float weightDValue = weightRValue * weightRValue;
+                    DropletParameter neighbourParameter = params[neighbourType];
 
-                conservativeForce += dropletParameter.repulsionParameter 
-                        * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
+                    conservativeForce += sqrt(dropletParameter.repulsionParameter * neighbourParameter.repulsionParameter)
+                            * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                dissipativeForce += dropletParameter.gamma * weightDValue * normalizedPositionVector
-                        * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
+                    dissipativeForce -= dropletParameter.gamma * weightDValue * normalizedPositionVector
+                            * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
-                randomForce += dropletParameter.sigma * weightRValue * normalizedPositionVector
-                        * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
+                    randomForce += dropletParameter.sigma * weightRValue * normalizedPositionVector
+                            * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
+                }
             }
         }
     }
 
     return conservativeForce + dissipativeForce + randomForce;
-}
-
-kernel void generateTube(global float3* vector, global int* types, int numberOfDroplets, 
-        int initialSeed, float radiusIn, float radiusOut, float height) {
-    
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
-    
-    int seed = calculateHash(dropletId, initialSeed);   
-    
-    float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
-    float y = rand(&seed, 1) * height - height/2;
-    float rangeOut = sqrt(radiusOut * radiusOut - x * x);
-    float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
-    
-    if (fabs(x) >= radiusIn || fabs(z) >= radiusIn) {
-        types[dropletId] = 0;
-    } else {
-        float randomNum = rand(&seed, 1);
-        if (randomNum >= 0.5f) {
-            types[dropletId] = 1;    
-        } else {
-            types[dropletId] = 2;
-        }        
-    }
-        
-    vector[dropletId] = (float3) (x, y, z);
-}
-
-kernel void generateTubeFromDroplets(global float3* vector, global int* types, int numberOfDroplets, 
-        int type, int initialSeed, float radiusIn, float radiusOut, float height) {
-    
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
-    
-    types[dropletId] = type;
-    int seed = calculateHash(dropletId, initialSeed);
-    
-    float x = (rand(&seed, 1) * 2 - 1) * (radiusOut);
-    float y = rand(&seed, 1) * height - height/2;
-    float z;
-    float rangeOut = sqrt(radiusOut*radiusOut - x*x);
-    float rangeIn = sqrt(radiusIn*radiusIn - x*x);
-    if(fabs(x) > radiusIn){        
-        z = (rand(&seed, 1) * 2 - 1) * rangeOut;
-    } else {
-        z = (rand(&seed, 1) * 2 - 1) * rangeOut * (rangeOut - rangeIn);
-        if(z < 0){
-            z -= rangeIn;
-        } else {
-            z += rangeIn;
-        }
-    }
-        
-    vector[dropletId] = ((float3) (x, y, z));
-}
-
-kernel void generateRandomVector(global float3* vector, float range, int numberOfDroplets, int initialSeed) {
-
-    int dropletId = get_global_id(0);
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
-    
-    int seed = calculateHash(dropletId, initialSeed);
-    float x = rand(&seed, 1) * 2 - 1;
-    float y = rand(&seed, 1) * 2 - 1;
-    float z = rand(&seed, 1) * 2 - 1;
-    vector[dropletId] = ((float3) (x, y, z)) * range;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
@@ -214,7 +148,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
             * (forces[dropletId] + predictedForce) / params[types[dropletId]].mass;
 }
 
-kernel void reductionVector(global float3* data, global float3* partialSums, 
+kernel void doVectorReduction(global float3* data, global float3* partialSums, 
         global float3* output, int dataLength) {
 
     int global_id = get_global_id(0);
@@ -227,7 +161,7 @@ kernel void reductionVector(global float3* data, global float3* partialSums,
     }
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     int offset;
-    for(offset = get_global_size(0)/2; offset > 0; offset >>= 1){
+    for(offset = group_size/2; offset > 0; offset >>= 1){
         if(global_id < offset){
             partialSums[global_id] += partialSums[global_id + offset];
         }
