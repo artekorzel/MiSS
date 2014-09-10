@@ -36,8 +36,8 @@ public class DpdSimulation {
     private static final float flowVelocity = 0.05f;
     private static final float thermalVelocity = 0.0036f;
     
-    private static final float vesselDensity = 12000.0f;
-    private static final float bloodDensity = 3000.0f;
+    private static final float vesselDensity = 4000.0f;
+    private static final float bloodDensity = 4000.0f;
     
     private static final float vesselMass = 4f;
     private static final float bloodCellMass = 1.14f;

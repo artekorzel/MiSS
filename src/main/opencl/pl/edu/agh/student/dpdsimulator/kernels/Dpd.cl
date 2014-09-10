@@ -73,7 +73,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
                 int neighbourType = types[neighbourId];
                 if(dropletType == 0 && neighbourType == 0) {
-                    conservativeForce += 10 * dropletParameter.repulsionParameter
+                    conservativeForce += dropletParameter.repulsionParameter
                             * (1.0 - distanceValue / cutoffRadius) * normalizedPositionVector;
                 } else {
                     float weightRValue = weightR(distanceValue, cutoffRadius);
