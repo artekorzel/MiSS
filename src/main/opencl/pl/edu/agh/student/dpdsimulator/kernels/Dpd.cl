@@ -123,7 +123,11 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         }
     }
 
-    return conservativeForce + dissipativeForce + randomForce;
+    if(dropletType == 0 || step > 100) {
+        return conservativeForce + dissipativeForce + randomForce;
+    } else {
+        return conservativeForce + dissipativeForce + randomForce + (float3)(0.0f, 0.01f, 0.0f);    
+    }
 }
 
 /*
