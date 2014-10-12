@@ -2,6 +2,7 @@
 Struktura przetrzymujaca parametry specyficzne dla typu czastki
 */
 typedef struct DropletParameter {
+    float cutoffRadius;//promien odciecia
     float mass;//masa czastki
     float repulsionParameter;//wspolczynnik odpychania
     float lambda;
@@ -83,7 +84,7 @@ niz promien odciecia (wyjatek stanowi oddzialywanie par czastek sciany,
 dla ktorych zastosowano prostszy algorytm symulujacy przyciaganie czastek).
 */
 float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
-        global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) {
+        global int* types, int numberOfDroplets, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -103,16 +104,16 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         if(neighbourId != dropletId) {
             float3 neighbourPosition = positions[neighbourId];
             float distanceValue = distance(neighbourPosition, dropletPosition);
+            
+            int neighbourType = types[neighbourId];
+            DropletParameter neighbourParameter = params[neighbourType];
+            float cutoffRadius = neighbourParameter.cutoffRadius;
+            
             if(distanceValue < cutoffRadius) {
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
-                int neighbourType = types[neighbourId];
-                if(dropletType == 0 && neighbourType == 0) {
-                    conservativeForce += 5.0f * dropletParameter.repulsionParameter
-                            * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
-                } else {
+                if(dropletType != 0 || neighbourType != 0) {
                     float weightRValue = weightR(distanceValue, cutoffRadius);
                     float weightDValue = weightRValue * weightRValue;
-                    DropletParameter neighbourParameter = params[neighbourType];
 
                     conservativeForce -= sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
                             * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
@@ -138,7 +139,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 Metoda kernela uruchamiana w kazdym kroku symulacji w celu wyznaczenia sil dla kazdej czastki.
 */
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
-        global DropletParameter* params, global int* types, float cutoffRadius, int numberOfDroplets, int step) {
+        global DropletParameter* params, global int* types, int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -146,7 +147,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     }
 
     forces[dropletId] = calculateForce(positions, velocities, params, types,
-             cutoffRadius,  numberOfDroplets, dropletId, step);
+             numberOfDroplets, dropletId, step);
 }
 
 /*
@@ -182,8 +183,7 @@ na ich podstawie obliczane sa predkosci rzeczywiste jakie czastki osiagaja po da
 */
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
         global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
-        global DropletParameter* params, global int* types, float deltaTime, float cutoffRadius, 
-        int numberOfDroplets, int step) {
+        global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, int step) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -191,7 +191,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
     }
 
     float3 predictedForce = calculateForce(newPositions, predictedVelocities, params, 
-            types, cutoffRadius,  numberOfDroplets, dropletId, step);
+            types, numberOfDroplets, dropletId, step);
 
     newVelocities[dropletId] = velocities[dropletId] + 0.5f * deltaTime 
             * (forces[dropletId] + predictedForce) / params[types[dropletId]].mass;

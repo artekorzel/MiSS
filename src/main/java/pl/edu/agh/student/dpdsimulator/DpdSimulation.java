@@ -21,13 +21,12 @@ public class DpdSimulation {
     private static final int numberOfDroplets = 50000;
     private static final float deltaTime = 1.0f;
     
-    private static final float cutoffRadius = 0.4f;
     private static final float boxSize = 10.0f;
     private static final float radiusIn = 0.5f * boxSize;
     private static final float radiusOut = 0.75f * boxSize;
     
     private static final float temperature = 310.0f;
-    private static final float boltzmanConstant = 1f / temperature;
+    private static final float boltzmanConstant = 1f / temperature / 500f;
     
     private static final float lambda = 0.63f;
     private static final float sigma = 0.075f;
@@ -36,11 +35,15 @@ public class DpdSimulation {
     private static final float flowVelocity = 0.05f;
     private static final float thermalVelocity = 0.0036f;
     
-    private static final float vesselDensity = 12000.0f;
-    private static final float bloodDensity = 3000.0f;
-    private static final float plasmaDensity = 3000.0f;
+    private static final float vesselCutoffRadius = 0.8f;
+    private static final float bloodCutoffRadius = 0.4f;
+    private static final float plasmaCutoffRadius = 0.4f;
     
-    private static final float vesselMass = 4f;
+    private static final float vesselDensity = 10000.0f;
+    private static final float bloodDensity = 50000.0f;
+    private static final float plasmaDensity = 50000.0f;
+    
+    private static final float vesselMass = 1000f;
     private static final float bloodCellMass = 1.14f;
     private static final float plasmaMass = 1f;
 
@@ -136,9 +139,9 @@ public class DpdSimulation {
      * odpowiednio dla czastek sciany naczynia, czerwonych krwinek oraz osocza.
      */
     private void initDropletParameters() {
-        addParameter(vesselMass, vesselDensity, lambda, sigma, gamma);
-        addParameter(bloodCellMass, bloodDensity, lambda, sigma, gamma);
-        addParameter(plasmaMass, plasmaDensity, lambda, sigma, gamma);
+        addParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma, gamma);
+        addParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma, gamma);
+        addParameter(plasmaCutoffRadius, plasmaMass, plasmaDensity, lambda, sigma, gamma);
 
         long size = parameters.size();
         Pointer<DropletParameter> valuesPointer = Pointer.allocateArray(DropletParameter.class, size).order(context.getByteOrder());
@@ -152,8 +155,10 @@ public class DpdSimulation {
     /**
      * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
      */
-    private void addParameter(float mass, float density, float lambda, float sigma, float gamma) {
+    private void addParameter(float cutoffRadius, float mass, float density,
+            float lambda, float sigma, float gamma) {
         DropletParameter dropletParameter = new DropletParameter();
+        dropletParameter.cutoffRadius(cutoffRadius);
         dropletParameter.mass(mass);
         
         float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
@@ -260,7 +265,7 @@ public class DpdSimulation {
      * Wywoluje wykonanie obliczenia sil na karcie graficznej
      */
     private CLEvent calculateForces(CLEvent gaussianRandomsEvent) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types, cutoffRadius,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types,
                 numberOfDroplets, step + initialRandom, globalSizes, null, gaussianRandomsEvent);
     }
 
@@ -277,7 +282,7 @@ public class DpdSimulation {
      */
     private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities,
-                forces, dropletParameters, types, deltaTime, cutoffRadius, numberOfDroplets, step + initialRandom,
+                forces, dropletParameters, types, deltaTime, numberOfDroplets, step + initialRandom,
                 globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
     }
 
