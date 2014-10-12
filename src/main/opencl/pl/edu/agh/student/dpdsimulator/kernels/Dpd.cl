@@ -83,7 +83,7 @@ niz promien odciecia (wyjatek stanowi oddzialywanie par czastek sciany,
 dla ktorych zastosowano prostszy algorytm symulujacy przyciaganie czastek).
 */
 float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
-    global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) {
+        global int* types, float cutoffRadius, int numberOfDroplets, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -94,6 +94,10 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     
     int dropletType = types[dropletId];
     DropletParameter dropletParameter = params[dropletType];
+    
+    float repulsionParameter = dropletParameter.repulsionParameter;
+    float gamma = dropletParameter.gamma;
+    float sigma = dropletParameter.sigma;
     
     for(int neighbourId = 0; neighbourId < numberOfDroplets; neighbourId++) {
         if(neighbourId != dropletId) {
@@ -110,13 +114,13 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     float weightDValue = weightRValue * weightRValue;
                     DropletParameter neighbourParameter = params[neighbourType];
 
-                    conservativeForce += sqrt(dropletParameter.repulsionParameter * neighbourParameter.repulsionParameter)
+                    conservativeForce -= sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
                             * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                    dissipativeForce -= dropletParameter.gamma * weightDValue * normalizedPositionVector
+                    dissipativeForce += gamma * weightDValue * normalizedPositionVector
                             * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
-                    randomForce += dropletParameter.sigma * weightRValue * normalizedPositionVector
+                    randomForce -= sigma * weightRValue * normalizedPositionVector
                             * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
                 }
             }

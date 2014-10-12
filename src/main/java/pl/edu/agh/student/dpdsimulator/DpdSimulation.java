@@ -17,14 +17,14 @@ public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
 
-    private static final int numberOfSteps = 50;
-    private static final int numberOfDroplets = 100000;
+    private static final int numberOfSteps = 100;
+    private static final int numberOfDroplets = 50000;
     private static final float deltaTime = 1.0f;
     
-    private static final float cutoffRadius = 0.99f;
-    private static final float boxSize = 26.0f;
-    private static final float radiusIn = 0.75f * boxSize;
-    private static final float radiusOut = 0.95f * boxSize;
+    private static final float cutoffRadius = 0.4f;
+    private static final float boxSize = 10.0f;
+    private static final float radiusIn = 0.5f * boxSize;
+    private static final float radiusOut = 0.75f * boxSize;
     
     private static final float temperature = 310.0f;
     private static final float boltzmanConstant = 1f / temperature;
@@ -38,6 +38,7 @@ public class DpdSimulation {
     
     private static final float vesselDensity = 12000.0f;
     private static final float bloodDensity = 3000.0f;
+    private static final float plasmaDensity = 3000.0f;
     
     private static final float vesselMass = 4f;
     private static final float bloodCellMass = 1.14f;
@@ -135,15 +136,9 @@ public class DpdSimulation {
      * odpowiednio dla czastek sciany naczynia, czerwonych krwinek oraz osocza.
      */
     private void initDropletParameters() {
-        //naczynie
-        float repulsionParameter = 75.0f * boltzmanConstant * temperature / vesselDensity;
-        addParameter(vesselMass, repulsionParameter, lambda, sigma, gamma);
-
-        repulsionParameter = 75.0f * boltzmanConstant * temperature / bloodDensity;
-        //krwinka
-        addParameter(bloodCellMass, repulsionParameter, lambda, sigma, gamma);
-        //osocze
-        addParameter(plasmaMass, repulsionParameter, lambda, sigma, gamma);
+        addParameter(vesselMass, vesselDensity, lambda, sigma, gamma);
+        addParameter(bloodCellMass, bloodDensity, lambda, sigma, gamma);
+        addParameter(plasmaMass, plasmaDensity, lambda, sigma, gamma);
 
         long size = parameters.size();
         Pointer<DropletParameter> valuesPointer = Pointer.allocateArray(DropletParameter.class, size).order(context.getByteOrder());
@@ -157,10 +152,11 @@ public class DpdSimulation {
     /**
      * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
      */
-    private void addParameter(float mass, float repulsionParameter,
-            float lambda, float sigma, float gamma) {
+    private void addParameter(float mass, float density, float lambda, float sigma, float gamma) {
         DropletParameter dropletParameter = new DropletParameter();
         dropletParameter.mass(mass);
+        
+        float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
         dropletParameter.repulsionParameter(repulsionParameter);
         dropletParameter.lambda(lambda);
         dropletParameter.sigma(sigma);
