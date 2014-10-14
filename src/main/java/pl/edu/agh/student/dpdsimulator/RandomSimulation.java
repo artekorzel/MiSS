@@ -7,6 +7,8 @@
 package pl.edu.agh.student.dpdsimulator;
 
 import com.nativelibs4java.opencl.*;
+import java.io.File;
+import java.io.FileWriter;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.*;
 /**
@@ -14,7 +16,7 @@ import pl.edu.agh.student.dpdsimulator.kernels.*;
  * @author Filip
  */
 public class RandomSimulation {
-    int STEPS = 1;
+    int STEPS = 1000000;
     
     private  CLBuffer<Float> rands;
     private int[] globalSizes;
@@ -33,15 +35,27 @@ public class RandomSimulation {
         CLContext context = JavaCL.createBestContext();             
         CLQueue queue = context.createDefaultQueue();
         RandomCL randomKernel = new RandomCL(context);           
-        rands = context.createFloatBuffer(CLMem.Usage.InputOutput, STEPS);
-        
-        globalSizes = new int[]{STEPS};
+        globalSizes = new int[]{STEPS};        
+        String directoryName = "../rands";
+        File directory = new File(directoryName);
+        if(!directory.exists()) {
+            directory.mkdir();
+        }
+                
+        Pointer<Float> positionsPointer = Pointer.allocateFloats(STEPS).order(context.getByteOrder());        
+        for(int i = 0; i < STEPS; i++){
+            positionsPointer.set(i, 0.0f);
+        }
+        rands = context.createBuffer(CLMem.Usage.InputOutput, positionsPointer, false);
         
         CLEvent randomEvent = randomKernel.random(queue, rands, STEPS, globalSizes, null, null);
-        Pointer<Float> out = rands.read(queue, randomEvent);    
-        for(int i = 0; i < STEPS; i++){
-            System.out.println(i + ":" + out.get(i));
+        File resultFile = new File(directoryName, "rands.csv");
+        try (FileWriter writer = new FileWriter(resultFile)) {
+            Pointer<Float> out = rands.read(queue);    
+            for(int i = 0; i < STEPS; i++){
+                writer.write(i + ":" + out.get(i) + "\n");
+            }
+            out.release();
         }
-        out.release();
     }
 }
