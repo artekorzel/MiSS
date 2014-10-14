@@ -197,6 +197,58 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
             * (forces[dropletId] + predictedForce) / params[types[dropletId]].mass;
 }
 
+kernel void generateTube(global float3* vector, global int* types, global int* states, int numberOfDroplets, 
+        float radiusIn, float radiusOut, float height) {
+    
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }
+    
+    int seed = states[dropletId];   
+    
+    float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
+    float y = rand(&seed, 1) * height - height/2;
+    float rangeOut = sqrt(radiusOut * radiusOut - x * x);
+    float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
+    
+    float distanceFromY = sqrt(x * x + z * z);
+    if (distanceFromY >= radiusIn) {
+        types[dropletId] = 0;
+    } else {
+        float randomNum = rand(&seed, 1);
+        if (randomNum >= 0.5f) {
+            types[dropletId] = 1;    
+        } else {
+            types[dropletId] = 2;
+        }        
+    }
+        
+    states[dropletId] = seed;
+    vector[dropletId] = (float3) (x, y, z);
+}
+
+kernel void generateRandomVector(global float3* vector, global int* states, global int* types, float thermalVelocity, float flowVelocity, int numberOfDroplets) {
+
+    int dropletId = get_global_id(0);
+    if (dropletId >= numberOfDroplets) {
+        return;
+    }
+    float x, y, z;
+    int seed = states[dropletId];
+    if(types[dropletId] == 0){
+        x = 0.0f;
+        y = 0.0f;
+        z = 0.0f;
+    } else {
+        x = (rand(&seed, 1) * 2 - 1) * thermalVelocity;
+        y = ((rand(&seed, 1) * 2 - 1) * flowVelocity + flowVelocity) / 2.0f;
+        z = (rand(&seed, 1) * 2 - 1) * thermalVelocity;
+    }
+    states[dropletId] = seed;
+    vector[dropletId] = ((float3) (x, y, z));
+}
+
 /*
 Funkcja obliczajaca rownolegle srednia predkosc wszystkich czastek.
 */

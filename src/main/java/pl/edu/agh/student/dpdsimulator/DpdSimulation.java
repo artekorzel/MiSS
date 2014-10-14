@@ -17,7 +17,7 @@ public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
 
-    private static final int numberOfSteps = 100;
+    private static final int numberOfSteps = 10;
     private static final int numberOfDroplets = 50000;
     private static final float deltaTime = 1.0f;
     
@@ -57,6 +57,7 @@ public class DpdSimulation {
     private CLBuffer<Float> partialSums;
     private CLBuffer<Float> averageVelocity;
     private CLBuffer<Integer> types;
+    private CLBuffer<Integer> states;
     private CLBuffer<DropletParameter> dropletParameters;
     private CLContext context;
     private CLQueue queue;
@@ -104,6 +105,7 @@ public class DpdSimulation {
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         averageVelocityPointer = Pointer.allocateArray(Float.class, VECTOR_SIZE).order(context.getByteOrder());
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
+        states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
 
         dpdKernel = new Dpd(context);
         globalSizes = new int[]{numberOfDroplets};
@@ -112,14 +114,15 @@ public class DpdSimulation {
         if(!directory.exists()) {
             directory.mkdir();
         }
-    }
-
+    }    
+    
     /**
      * Wykonuje zdefiniowana przez nas ilosc krokow symulacji w kazdym kroku zapisujac dane do odpowiednich plikow.
      */
     private void performSimulation() {
         step = 0;
         initDropletParameters();
+        initStates();
         initPositionsAndVelocities();
         writePositionsFile(positions);
         initialRandom = random.nextInt();
@@ -170,79 +173,94 @@ public class DpdSimulation {
         parameters.add(dropletParameter);
     }
 
+    private void initStates(){
+        Pointer<Integer> statesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
+        for(int i = 0; i < numberOfDroplets; i++){
+            statesPointer.set(i,random.nextInt(2147483647));
+        }
+        
+        states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
+    }
+    
     /**
      * Generuje naczynie krwionosne wraz z czasteczkami znajdujacymi sie wewnatrz oraz poczatkowe predkosci czastek.
      */
-    private void initPositionsAndVelocities() {
-        long t = System.nanoTime();
-        generateTube();
-        generateVelocities();
-        System.out.println("Initialization time: " + (System.nanoTime() - t));
+//    private void initPositionsAndVelocities() {
+//        long t = System.nanoTime();
+//        generateTube();
+//        generateVelocities();
+//        System.out.println("Initialization time: " + (System.nanoTime() - t));
+//    }
+    
+    private CLEvent initPositionsAndVelocities() {
+        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, states, numberOfDroplets, 
+                0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+        return dpdKernel.generateRandomVector(queue, velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets,
+                globalSizes, null, generatePositionsEvent);
     }
-
     /**
      * Generuje naczynie krwionosne oraz polozenia czasteczek znajdujacych sie w jego wnetrzu. Sciana naczynia zostaje
      * kazda czastka w okreslonej odleglosci od srodka natomiast pozostale sa losowo wybierane jako osocze lub krwinka.
      */
-    private void generateTube() {
-        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
-        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
-        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
-            float x = nextRandomFloat(radiusOut);
-            float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
-            float y = nextRandomFloat(boxSize);
-
-            positionsPointer.set(i, x);
-            positionsPointer.set(i + 1, y);
-            positionsPointer.set(i + 2, z);
-            positionsPointer.set(i + 3, 0.0f);
-
-            float distanceFromY = (float) Math.sqrt(x * x + z * z);
-            int dropletId = i / 4;
-            if (distanceFromY >= radiusIn) {
-                typesPointer.set(dropletId, 0);
-            } else {
-                float randomNum = nextRandomFloat(1);
-                if (randomNum >= 0.0f) {
-                    typesPointer.set(dropletId, 1);
-                } else {
-                    typesPointer.set(dropletId, 2);
-                }
-            }
-        }
-        positions = context.createBuffer(CLMem.Usage.InputOutput, positionsPointer);
-        types = context.createBuffer(CLMem.Usage.InputOutput, typesPointer);
-    }
+//    private void generateTube() {
+//        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
+//        typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
+//        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
+//        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
+//            float x = nextRandomFloat(radiusOut);
+//            float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
+//            float y = nextRandomFloat(boxSize);
+//
+//            positionsPointer.set(i, x);
+//            positionsPointer.set(i + 1, y);
+//            positionsPointer.set(i + 2, z);
+//            positionsPointer.set(i + 3, 0.0f);
+//
+//            float distanceFromY = (float) Math.sqrt(x * x + z * z);
+//            int dropletId = i / 4;
+//            if (distanceFromY >= radiusIn) {
+//                typesPointer.set(dropletId, 0);
+//            } else {
+//                float randomNum = nextRandomFloat(1);
+//                if (randomNum >= 0.0f) {
+//                    typesPointer.set(dropletId, 1);
+//                } else {
+//                    typesPointer.set(dropletId, 2);
+//                }
+//            }
+//        }
+//        positions = context.createBuffer(CLMem.Usage.InputOutput, positionsPointer);
+//        types = context.createBuffer(CLMem.Usage.InputOutput, typesPointer);
+//    }
 
     /**
      * Generuje predkosci poczatkowe czasteczek. Czasteczki scian pozostaja nieruchome, zas czasteczki osocza i krwinki
      * w kierunku zgodnym z przeplywem krwi maja predkosci losowane z przedzialu <0; velocityInitRange> oraz
      * <-thermalVelocity, thermalVelocity> w pozostalych kierunkach
      */
-    private void generateVelocities() {
-        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-        Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
-        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
-            int dropletId = i / 4;
-            float x, y, z;
-            if(typesPointer.get(dropletId) == 0) {
-                x = 0.0f;
-                y = 0.0f;
-                z = 0.0f;
-            } else {
-                x = nextRandomFloat(thermalVelocity);
-                y = (nextRandomFloat(flowVelocity) + flowVelocity) / 2.0f;
-                z = nextRandomFloat(thermalVelocity);
-            }
-
-            velocitiesPointer.set(i, x);
-            velocitiesPointer.set(i + 1, y);
-            velocitiesPointer.set(i + 2, z);
-            velocitiesPointer.set(i + 3, 0.0f);
-        }
-        velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
-    }
+//    private void generateVelocities() {
+//        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
+//        Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
+//        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
+//            int dropletId = i / 4;
+//            float x, y, z;
+//            if(typesPointer.get(dropletId) == 0) {
+//                x = 0.0f;
+//                y = 0.0f;
+//                z = 0.0f;
+//            } else {
+//                x = nextRandomFloat(thermalVelocity);
+//                y = (nextRandomFloat(flowVelocity) + flowVelocity) / 2.0f;
+//                z = nextRandomFloat(thermalVelocity);
+//            }
+//
+//            velocitiesPointer.set(i, x);
+//            velocitiesPointer.set(i + 1, y);
+//            velocitiesPointer.set(i + 2, z);
+//            velocitiesPointer.set(i + 3, 0.0f);
+//        }
+//        velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
+//    }
 
     /**
      * Generuje zmienna losowa z przedzialu <-range; range>
