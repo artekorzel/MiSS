@@ -17,7 +17,7 @@ public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
 
-    private static final int numberOfSteps = 10;
+    private static final int numberOfSteps = 100;
     private static final int numberOfDroplets = 50000;
     private static final float deltaTime = 1.0f;
     
@@ -194,7 +194,7 @@ public class DpdSimulation {
     
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, states, numberOfDroplets, 
-                0.4f * boxSize, 0.5f * boxSize, boxSize, globalSizes, null);
+                radiusIn, radiusOut, boxSize, globalSizes, null);
         return dpdKernel.generateRandomVector(queue, velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets,
                 globalSizes, null, generatePositionsEvent);
     }

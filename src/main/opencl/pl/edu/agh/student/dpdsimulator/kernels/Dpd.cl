@@ -208,7 +208,7 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     int seed = states[dropletId];   
     
     float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
-    float y = rand(&seed, 1) * height - height/2;
+    float y = (rand(&seed, 1) * 2 - 1) * height;
     float rangeOut = sqrt(radiusOut * radiusOut - x * x);
     float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
     
