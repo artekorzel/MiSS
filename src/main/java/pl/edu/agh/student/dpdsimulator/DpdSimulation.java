@@ -63,7 +63,6 @@ public class DpdSimulation {
     private CLQueue queue;
     private Dpd dpdKernel;
     private int[] globalSizes;
-    private Pointer<Integer> typesPointer;
     private Pointer<Float> partialSumsPointer;
     private Pointer<Float> averageVelocityPointer;
     
@@ -182,91 +181,11 @@ public class DpdSimulation {
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
     }
     
-    /**
-     * Generuje naczynie krwionosne wraz z czasteczkami znajdujacymi sie wewnatrz oraz poczatkowe predkosci czastek.
-     */
-//    private void initPositionsAndVelocities() {
-//        long t = System.nanoTime();
-//        generateTube();
-//        generateVelocities();
-//        System.out.println("Initialization time: " + (System.nanoTime() - t));
-//    }
-    
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, states, numberOfDroplets, 
                 radiusIn, radiusOut, boxSize, globalSizes, null);
         return dpdKernel.generateRandomVector(queue, velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets,
                 globalSizes, null, generatePositionsEvent);
-    }
-    /**
-     * Generuje naczynie krwionosne oraz polozenia czasteczek znajdujacych sie w jego wnetrzu. Sciana naczynia zostaje
-     * kazda czastka w okreslonej odleglosci od srodka natomiast pozostale sa losowo wybierane jako osocze lub krwinka.
-     */
-//    private void generateTube() {
-//        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-//        typesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
-//        Pointer<Float> positionsPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
-//        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
-//            float x = nextRandomFloat(radiusOut);
-//            float z = nextRandomFloat((float) Math.sqrt(radiusOut * radiusOut - x * x));
-//            float y = nextRandomFloat(boxSize);
-//
-//            positionsPointer.set(i, x);
-//            positionsPointer.set(i + 1, y);
-//            positionsPointer.set(i + 2, z);
-//            positionsPointer.set(i + 3, 0.0f);
-//
-//            float distanceFromY = (float) Math.sqrt(x * x + z * z);
-//            int dropletId = i / 4;
-//            if (distanceFromY >= radiusIn) {
-//                typesPointer.set(dropletId, 0);
-//            } else {
-//                float randomNum = nextRandomFloat(1);
-//                if (randomNum >= 0.0f) {
-//                    typesPointer.set(dropletId, 1);
-//                } else {
-//                    typesPointer.set(dropletId, 2);
-//                }
-//            }
-//        }
-//        positions = context.createBuffer(CLMem.Usage.InputOutput, positionsPointer);
-//        types = context.createBuffer(CLMem.Usage.InputOutput, typesPointer);
-//    }
-
-    /**
-     * Generuje predkosci poczatkowe czasteczek. Czasteczki scian pozostaja nieruchome, zas czasteczki osocza i krwinki
-     * w kierunku zgodnym z przeplywem krwi maja predkosci losowane z przedzialu <0; velocityInitRange> oraz
-     * <-thermalVelocity, thermalVelocity> w pozostalych kierunkach
-     */
-//    private void generateVelocities() {
-//        int numberOfCoordinates = numberOfDroplets * VECTOR_SIZE;
-//        Pointer<Float> velocitiesPointer = Pointer.allocateArray(Float.class, numberOfCoordinates).order(context.getByteOrder());
-//        for (int i = 0; i < numberOfCoordinates; i += VECTOR_SIZE) {
-//            int dropletId = i / 4;
-//            float x, y, z;
-//            if(typesPointer.get(dropletId) == 0) {
-//                x = 0.0f;
-//                y = 0.0f;
-//                z = 0.0f;
-//            } else {
-//                x = nextRandomFloat(thermalVelocity);
-//                y = (nextRandomFloat(flowVelocity) + flowVelocity) / 2.0f;
-//                z = nextRandomFloat(thermalVelocity);
-//            }
-//
-//            velocitiesPointer.set(i, x);
-//            velocitiesPointer.set(i + 1, y);
-//            velocitiesPointer.set(i + 2, z);
-//            velocitiesPointer.set(i + 3, 0.0f);
-//        }
-//        velocities = context.createBuffer(CLMem.Usage.InputOutput, velocitiesPointer);
-//    }
-
-    /**
-     * Generuje zmienna losowa z przedzialu <-range; range>
-     */
-    private float nextRandomFloat(float range) {
-        return random.nextFloat() * 2 * range - range;
     }
 
     /**
