@@ -112,7 +112,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     
     int i, j, cellId, neighbourId;
     for(i = 0, cellId = dropletCellNeighbours[i]; cellId >= 0; cellId = dropletCellNeighbours[++i]) {
-        global int* dropletNeighbours = &cells[cellId * numberOfDroplets / 1000];
+        global int* dropletNeighbours = &cells[numberOfDroplets / 1000 * cellId];
         for(j = 0, neighbourId = dropletNeighbours[j]; neighbourId >= 0; neighbourId = dropletNeighbours[++j]) {
             if(neighbourId != dropletId) {
                 float3 neighbourPosition = positions[neighbourId];
@@ -162,10 +162,10 @@ kernel void fillCells(global int* cells, global float3* positions, float cellRad
         float3 position = positions[dropletId];
         int predictedCellId = calculateCellId(position, cellRadius, boxSize);
         if(predictedCellId == cellId) {
-            cells[cellId * numberOfDroplets / 1000 + freeId++] = dropletId;
+            cells[numberOfDroplets / 1000 * cellId + freeId++] = dropletId;
         }
     }
-    cells[cellId * numberOfDroplets / 1000 + freeId] = -1;
+    cells[numberOfDroplets / 1000 * cellId + freeId] = -1;
 }
 
 kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, float boxSize, int numberOfCells) {

@@ -98,7 +98,7 @@ public class DpdSimulation {
         queue = context.createDefaultQueue();
 
         random = new Random();
-        cells = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets * numberOfCells / 1000);
+        cells = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets / 1000 * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCells * 28);
         positions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
@@ -126,10 +126,12 @@ public class DpdSimulation {
      * Wykonuje zdefiniowana przez nas ilosc krokow symulacji w kazdym kroku zapisujac dane do odpowiednich plikow.
      */
     private void performSimulation() {
+        long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
         writePositionsFile(positions, loopEndEvent);
         initialRandom = random.nextInt();
+        long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
@@ -138,24 +140,9 @@ public class DpdSimulation {
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
-//        Pointer<Integer> out = cellNeighbours.read(queue, loopEndEvent);
-//        for (int i = 0; i < numberOfCells; i++) {
-//            for (int j = 0; j < 28 && out.get(i * 28 + j) >= 0; j++) {
-//                System.out.print(out.get(i * 28 + j) + ", ");
-//            }
-//            System.out.println("");
-//        }
-//        out.release();
-//        
-//        Pointer<Float> out = forces.read(queue, loopEndEvent);
-//        for (int i = 0; i < numberOfDroplets; i++) {
-//            if(out.get(i * VECTOR_SIZE) < 0) {
-//            System.out.println(out.get(i * VECTOR_SIZE) + ","
-//                    + out.get(i * VECTOR_SIZE + 1) + ","
-//                    + out.get(i * VECTOR_SIZE + 2));
-//            }
-//        }
-//        out.release();
+        long endTime = System.nanoTime();
+        System.out.println("Init time: " + (endInitTime - startTime) / 1000000000.0);
+        System.out.println("Mean step time: " + (endTime - startTime) / 1000000000.0 / numberOfSteps);
     }
     
     private CLEvent initSimulationData() {
