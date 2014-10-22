@@ -119,6 +119,7 @@ public class DpdSimulation {
      * Wykonuje zdefiniowana przez nas ilosc krokow symulacji w kazdym kroku zapisujac dane do odpowiednich plikow.
      */
     private void performSimulation() {
+        long startTime = System.nanoTime();
         step = 0;
         initDropletParameters();
         initStates();
@@ -126,6 +127,7 @@ public class DpdSimulation {
         writePositionsFile(positions);
         initialRandom = random.nextInt();
         CLEvent loopEndEvent = null;
+        long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
@@ -134,6 +136,9 @@ public class DpdSimulation {
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
+        long endTime = System.nanoTime();
+        System.out.println("Init time: " + (endInitTime - startTime) / 1000000000.0);
+        System.out.println("Mean loop time: " + (endTime - startTime) / 1000000000.0 / numberOfSteps);
     }
 
     /**
