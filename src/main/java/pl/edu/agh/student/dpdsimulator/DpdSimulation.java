@@ -17,8 +17,8 @@ public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
 
-    private static final int numberOfSteps = 10;
-    private static final int numberOfDroplets = 200000;
+    private static final int numberOfSteps = 1;
+    private static final int numberOfDroplets = 1000000;
     private static final float deltaTime = 1.0f;
     
     private static final float boxSize = 10.0f;
@@ -143,6 +143,10 @@ public class DpdSimulation {
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / 1000000000.0);
         System.out.println("Mean step time: " + (endTime - startTime) / 1000000000.0 / numberOfSteps);
+        
+        /*Pointer<Float> out = forces.read(queue, loopEndEvent);
+        for(int i =0; i < numberOfDroplets * VECTOR_SIZE; i += VECTOR_SIZE)
+            if(out.get(i) != -2)System.out.println(out.get(i) + " " + out.get(i + 1) + " " + out.get(i + 2));*/
     }
     
     private CLEvent initSimulationData() {
@@ -231,7 +235,7 @@ public class DpdSimulation {
      */
     private CLEvent calculateForces(CLEvent previousStepEvent) {
         return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, 
-                cellRadius, boxSize, numberOfDroplets, numberOfCells, step + initialRandom, globalSizes, null, previousStepEvent);
+                cellRadius, boxSize, numberOfDroplets, numberOfCells, step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, previousStepEvent);
     }
 
     /**
@@ -248,7 +252,7 @@ public class DpdSimulation {
     private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities, forces, 
                 dropletParameters, types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
-                step + initialRandom, globalSizes, null, newPositionsAndPredictedVelocitiesEvent);
+                step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, newPositionsAndPredictedVelocitiesEvent);
     }
 
     /**
