@@ -12,7 +12,7 @@ public abstract class Simulation {
     
     public static final int numberOfCellNeighbours = 27;
     public static final int numberOfSteps = 10;
-    public static final int numberOfDroplets = 1000;
+    public static final int numberOfDroplets = 10000;
     public static final float deltaTime = 1.0f;
     
     public static final float boxSize = 10.0f;
@@ -43,7 +43,7 @@ public abstract class Simulation {
     
     public static final float cellRadius = 1.0f;
     public static final int numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxSize / cellRadius / cellRadius / cellRadius);
-    public static final int maxDropletsPerCell = numberOfDroplets / numberOfCells * 10;
+    public static final int maxDropletsPerCell = (numberOfDroplets / numberOfCells) * numberOfCells * 10;
         
     public abstract void initData() throws IOException;
     
