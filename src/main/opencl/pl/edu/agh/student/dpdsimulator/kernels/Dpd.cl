@@ -1,19 +1,12 @@
-/*
-Struktura przetrzymujaca parametry specyficzne dla typu czastki
-*/
 typedef struct DropletParameter {
-    float cutoffRadius;//promien odciecia
-    float mass;//masa czastki
-    float repulsionParameter;//wspolczynnik odpychania
+    float cutoffRadius;
+    float mass;
+    float repulsionParameter;
     float lambda;
     float sigma;
     float gamma;
 } DropletParameter;
 
-/*
-Funkcja przyjmuje odleglosc pomiedzy czastkami oraz maksymalna odleglosc dla ktorej powinna 
-wykonywac obliczenia i zwraca wartosc wagi dla sily konserwatywnej.
-*/
 float weightR(float distanceValue, float cutoffRadius) {
     if(distanceValue > cutoffRadius) {
         return 0.0;
@@ -21,19 +14,10 @@ float weightR(float distanceValue, float cutoffRadius) {
     return 1.0 - distanceValue / cutoffRadius;
 }
 
-/*
-Funkcja przyjmuje wektor pozycji i wielkosc pudla obliczeniowego 
-i zwraca pozycje czastki znormalizowana do wielkosci pudla.
-*/
 float3 normalizePosition(float3 vector, float boxSize) {
     return fmod(fmod(vector + boxSize, 2.0f * boxSize) + 2.0f * boxSize, 2.0f * boxSize) - boxSize;
 }
 
-/*
-Funkcja hashujaca dla pary czastek na podstawie ich ID. Dzieki niej jestesmy w stanie 
-dla danej pary wygenerowac taka sama wartosc wspolczynnika sily brownowskiej przy obliczeniach 
-z punktu widzenia obu czastek z pary, nie musimy przechowywac tablicy wspolczynnikow.
-*/
 int calculateHash(int d1, int d2) {    
     int i1, i2;
     if(d1 <= d2) {
@@ -46,9 +30,7 @@ int calculateHash(int d1, int d2) {
     return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
-/*
-Funkcja randomizujaca z rozkladem liniowym na przedziale <0; 1>
-*/
+// <0; 1>
 float rand(int* seed, int step) {
     long const a = 16807L;
     long const m = 2147483647L;
@@ -56,9 +38,7 @@ float rand(int* seed, int step) {
     return (float)(*seed) / m;
 }
 
-/*
-Funkcja randomizujaca z rozkladem normalnym na przedziale <-1; 1>
-*/
+// <-1; 1>
 float normalRand(float U1, float U2) {
      float R = -2 * log(U1);
      float fi = 2 * M_PI * U2;
@@ -67,9 +47,7 @@ float normalRand(float U1, float U2) {
      //float Z2 = sqrt(R) * sin(fi);
 }
 
-/*
-Funkcja randomizujaca z rozkladem Gaussa na przedziale <-1; 1>
-*/
+// <-1; 1>
 float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) {
     int seed = calculateHash(dropletId, neighbourId);
     float U1 = (rand(&seed, step) + 1.0) / 2;
@@ -83,15 +61,10 @@ int calculateCellId(float3 position, float cellRadius, float boxSize) {
                     ((int)(2 * boxSize / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
 }
 
-/*
-Funkcja obliczajaca sile dzialajaca na dana czastke jako sume 3 skladowych sily wyjsciowej: 
-konserwatywnej, dyssypatywnej oraz brownowskiej dla kazdej czastki w odleglosci mniejszej, 
-niz promien odciecia (wyjatek stanowi oddzialywanie par czastek sciany, 
-dla ktorych zastosowano prostszy algorytm symulujacy przyciaganie czastek).
-*/
 float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
         global int* types, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize,
-        int numberOfDroplets, int numberOfCells, int dropletId, int dropletCellNeighbourId, int step) {
+        int numberOfDroplets, int numberOfCells, int numberOfCellNeighbours, int dropletId, 
+        int dropletCellNeighbourId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -108,7 +81,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float sigma = dropletParameter.sigma;
     
     int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize);
-    global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 28];
+    global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * numberOfCellNeighbours];
     
     int i, j, neighbourId;
     int cellId = dropletCellNeighbours[dropletCellNeighbourId];
@@ -151,8 +124,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 }
 
 kernel void fillCells(global int* cells, global float3* positions, float cellRadius, 
-        float boxSize, int numberOfDroplets, int numberOfCells)
-{
+        float boxSize, int numberOfDroplets, int numberOfCells) {
+
     int cellId = get_global_id(0);
     if (cellId >= numberOfCells) {
         return;
@@ -171,7 +144,9 @@ kernel void fillCells(global int* cells, global float3* positions, float cellRad
     }
 }
 
-kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, float boxSize, int numberOfCells) {
+kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, float boxSize, 
+        int numberOfCells, int numberOfCellNeighbours) {
+    
     int cellId = get_global_id(0);
     if (cellId >= numberOfCells) {
         return;
@@ -184,7 +159,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, flo
     int cellIdPartY = (cellId / numberOfCellsPerDim) % numberOfCellsPerDim;
     int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
-    int cellIndex = cellId * 28;
+    int cellIndex = cellId * numberOfCellNeighbours;
     cellNeighbours[cellIndex++] = cellId;
     
     if(cellIdPartX > 0) {
@@ -291,17 +266,15 @@ kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, flo
         }
     }
     
-    for(int n = (cellId + 1) * 28; cellIndex < n; ++cellIndex) {
+    for(int n = (cellId + 1) * numberOfCellNeighbours; cellIndex < n; ++cellIndex) {
         cellNeighbours[cellIndex] = -1;
     }
 }
 
-/*
-Metoda kernela uruchamiana w kazdym kroku symulacji w celu wyznaczenia sil dla kazdej czastki.
-*/
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
         global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
-        float cellRadius, float boxSize,int numberOfDroplets, int numberOfCells, int step) {
+        float cellRadius, float boxSize,int numberOfDroplets, int numberOfCells, 
+        int numberOfCellNeighbours, int step) {
 
     int dropletId = get_global_id(0) / get_local_size(0);
     if (dropletId >= numberOfDroplets) {
@@ -309,11 +282,11 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     }
     
     int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 28) {
+    if(dropletCellNeighbourId >= numberOfCellNeighbours) {
         return;
     }
 
-    local float3 localForces[28];
+    local float3 localForces[numberOfCellNeighbours];
     localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params, types, cells, cellNeighbours,
             cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
     
@@ -321,17 +294,13 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     
     if(dropletCellNeighbourId == 0) {
         float3 force = localForces[0];
-        for(int i = 1; i < 28; ++i) {
+        for(int i = 1; i < numberOfCellNeighbours; ++i) {
             force += localForces[i];
         }
         forces[dropletId] = force;
     }
 }
 
-/*
-Funkcja generujaca pozycje oraz przewidywane predkosci, ktore potem sa weryfikowane. 
-Przewidywane predkosci wykorzystywane sa przy obliczaniu sil czastek w danym kroku.
-*/
 kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
         global float3* forces, global float3* newPositions, global float3* predictedVelocities,
         global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, float boxSize) {
@@ -355,33 +324,30 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
             + dropletParameter.lambda * deltaTime * dropletForce / dropletMass;
 }
 
-/*
-W tej funkcji kazdym kroku obliczane sa przewidywane wartosci sily, a nastepnie 
-na ich podstawie obliczane sa predkosci rzeczywiste jakie czastki osiagaja po danym kroku.
-*/
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
         global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
         global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
-        float deltaTime, float cellRadius, float boxSize, int numberOfDroplets, int numberOfCells, int step) {
+        float deltaTime, float cellRadius, float boxSize, int numberOfDroplets, 
+        int numberOfCells, int numberOfCellNeighbours, int step) {
 
-    int dropletId = get_global_id(0) / 28;
+    int dropletId = get_global_id(0) / numberOfCellNeighbours;
     if (dropletId >= numberOfDroplets) {
         return;
     }
     
     int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 28) {
+    if(dropletCellNeighbourId >= numberOfCellNeighbours) {
         return;
     }
 
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    local float3 localForces[28];
+    local float3 localForces[numberOfCellNeighbours];
     localForces[dropletCellNeighbourId] = calculateForce(newPositions, predictedVelocities, params, types, 
             cells, cellNeighbours, cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
     
     if(dropletCellNeighbourId == 0) {
         float3 predictedForce = localForces[0];
-        for(int i = 1; i < 28; ++i) {
+        for(int i = 1; i < numberOfCellNeighbours; ++i) {
             predictedForce += localForces[i];
         }
         newVelocities[dropletId] = velocities[dropletId] + 0.5f * deltaTime 
@@ -441,9 +407,6 @@ kernel void generateRandomVector(global float3* vector, global int* states, glob
     vector[dropletId] = ((float3) (x, y, z));
 }
 
-/*
-Funkcja obliczajaca rownolegle srednia predkosc wszystkich czastek.
-*/
 kernel void doVectorReduction(global float3* data, global float3* partialSums, 
         global float3* output, int dataLength) {
 

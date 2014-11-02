@@ -16,9 +16,11 @@ import pl.edu.agh.student.dpdsimulator.kernels.Dpd.DropletParameter;
 public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
-
+    private static final double NANOS_IN_SECOND = 1000000000.0;
+    
+    private static final int numberOfCellNeighbours = 27;
     private static final int numberOfSteps = 1;
-    private static final int numberOfDroplets = 1000000;
+    private static final int numberOfDroplets = 10000;
     private static final float deltaTime = 1.0f;
     
     private static final float boxSize = 10.0f;
@@ -67,18 +69,13 @@ public class DpdSimulation {
     private CLContext context;
     private CLQueue queue;
     private Dpd dpdKernel;
-    private int[] globalSizes;
     private Pointer<Float> partialSumsPointer;
     private Pointer<Float> averageVelocityPointer;
     
     private List<DropletParameter> parameters = new ArrayList<>();
     private String directoryName;
     private int step;
-    private int initialRandom;
 
-    /**
-     * Inicjalizuje dane oraz wykonuje symulacje przeplywu czastek krwi
-     */
     public static void main(String[] args) {
         try {
             DpdSimulation simulation = new DpdSimulation();
@@ -89,17 +86,13 @@ public class DpdSimulation {
         }
     }
 
-    /**
-     * Alokuje pamiec na karcie graficznej dla potrzebnych struktur oraz tworzy obiekt kernela, 
-     * dzieki ktoremu mozemy wykonywac operacje na karcie graficznej.
-     */
     private void initData() throws IOException {
         context = JavaCL.createBestContext();
         queue = context.createDefaultQueue();
 
         random = new Random();
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets / 1000 * numberOfCells);
-        cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCells * 28);
+        cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCells * numberOfCellNeighbours);
         positions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
         velocities = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * VECTOR_SIZE);
@@ -114,7 +107,7 @@ public class DpdSimulation {
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
 
         dpdKernel = new Dpd(context);
-        globalSizes = new int[]{numberOfDroplets};
+        
         directoryName = "../results_" + new Date().getTime();
         File directory = new File(directoryName);
         if(!directory.exists()) {
@@ -122,15 +115,11 @@ public class DpdSimulation {
         }
     }    
     
-    /**
-     * Wykonuje zdefiniowana przez nas ilosc krokow symulacji w kazdym kroku zapisujac dane do odpowiednich plikow.
-     */
     private void performSimulation() {
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
         writePositionsFile(positions, loopEndEvent);
-        initialRandom = random.nextInt();
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
@@ -141,12 +130,8 @@ public class DpdSimulation {
             swapVelocities(loopEndEvent);
         }
         long endTime = System.nanoTime();
-        System.out.println("Init time: " + (endInitTime - startTime) / 1000000000.0);
-        System.out.println("Mean step time: " + (endTime - startTime) / 1000000000.0 / numberOfSteps);
-        
-        /*Pointer<Float> out = forces.read(queue, loopEndEvent);
-        for(int i =0; i < numberOfDroplets * VECTOR_SIZE; i += VECTOR_SIZE)
-            if(out.get(i) != -2)System.out.println(out.get(i) + " " + out.get(i + 1) + " " + out.get(i + 2));*/
+        System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);
     }
     
     private CLEvent initSimulationData() {
@@ -157,10 +142,6 @@ public class DpdSimulation {
         return fillCellNeighbours(fillCells);
     }
 
-    /**
-     * Tworzy parametry dla trzech typow czasteczek wykorzystywanych w symulacji 
-     * odpowiednio dla czastek sciany naczynia, czerwonych krwinek oraz osocza.
-     */
     private void initDropletParameters() {
         addParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma, gamma);
         addParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma, gamma);
@@ -175,9 +156,6 @@ public class DpdSimulation {
         dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
 
-    /**
-     * Dodaje kolejny typ do tablicy parametrow przetrzymywanej na karcie graficznej
-     */
     private void addParameter(float cutoffRadius, float mass, float density,
             float lambda, float sigma, float gamma) {
         DropletParameter dropletParameter = new DropletParameter();
@@ -196,7 +174,7 @@ public class DpdSimulation {
     private void initStates(){
         Pointer<Integer> statesPointer = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
         for(int i = 0; i < numberOfDroplets; i++){
-            statesPointer.set(i,random.nextInt(2147483647));
+            statesPointer.set(i,random.nextInt(Integer.MAX_VALUE));
         }
         
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
@@ -204,9 +182,9 @@ public class DpdSimulation {
     
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types, states, numberOfDroplets, 
-                radiusIn, radiusOut, boxSize, globalSizes, null);
+                radiusIn, radiusOut, boxSize, new int[]{numberOfDroplets}, null);
         return dpdKernel.generateRandomVector(queue, velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets,
-                globalSizes, null, generatePositionsEvent);
+                new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
     
     private CLEvent fillCells(CLEvent previousStepEvent, CLBuffer<Float> positions) {
@@ -216,12 +194,9 @@ public class DpdSimulation {
     
     private CLEvent fillCellNeighbours(CLEvent previousStepEvent) {
         return dpdKernel.fillCellNeighbours(queue, cellNeighbours, cellRadius, boxSize, 
-                numberOfCells, new int[]{ numberOfCells }, null, previousStepEvent);
+                numberOfCells, numberOfCellNeighbours, new int[]{ numberOfCells }, null, previousStepEvent);
     }
 
-    /**
-     * Wykonuje pojedynczy krok symulacji
-     */
     private CLEvent performSingleStep(CLEvent previousStepEvent) {
         CLEvent forcesEvent = calculateForces(previousStepEvent);
         CLEvent newPositionsAndPredictedVelocitiesEvent = 
@@ -230,34 +205,24 @@ public class DpdSimulation {
         return calculateNewVelocities(cellsEvent);
     }
 
-    /**
-     * Wywoluje wykonanie obliczenia sil na karcie graficznej
-     */
     private CLEvent calculateForces(CLEvent previousStepEvent) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, 
-                cellRadius, boxSize, numberOfDroplets, numberOfCells, step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, previousStepEvent);
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types, cells, 
+                cellNeighbours, cellRadius, boxSize, numberOfDroplets, numberOfCells, numberOfCellNeighbours, step,
+                new int[]{numberOfDroplets * numberOfCellNeighbours}, new int[]{numberOfCellNeighbours}, previousStepEvent);
     }
 
-    /**
-     * Wywoluje wykonanie obliczenia nowych pozycji i przewidywanych predkosci na karcie graficznej
-     */
     private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent forcesEvent) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces, newPositions,
-                predictedVelocities, dropletParameters, types, deltaTime, numberOfDroplets, boxSize, globalSizes, null, forcesEvent);
+                predictedVelocities, dropletParameters, types, deltaTime, numberOfDroplets, boxSize, new int[]{numberOfDroplets}, null, forcesEvent);
     }
 
-    /**
-     * Wywoluje wykonanie obliczenia nowych predkosci na karcie graficznej
-     */
     private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
-        return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities, forces, 
-                dropletParameters, types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
-                step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, newPositionsAndPredictedVelocitiesEvent);
+        return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities, 
+                forces, dropletParameters, types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, 
+                numberOfCells, numberOfCellNeighbours, step, new int[]{numberOfDroplets * numberOfCellNeighbours}, 
+                new int[]{numberOfCellNeighbours}, newPositionsAndPredictedVelocitiesEvent);
     }
 
-    /**
-     * Zamienia wskazniki polozen przechowywanych na karcie graficznej
-     */
     private void swapPositions(CLEvent... events) {
         CLEvent.waitFor(events);
         CLBuffer<Float> tmp = positions;
@@ -265,9 +230,6 @@ public class DpdSimulation {
         newPositions = tmp;
     }
 
-    /**
-     * Zamienia wskazniki predkosci przechowywanych na karcie graficznej
-     */
     private void swapVelocities(CLEvent... events) {
         CLEvent.waitFor(events);
         CLBuffer<Float> tmp = velocities;
@@ -275,11 +237,6 @@ public class DpdSimulation {
         newVelocities = tmp;
     }
 
-    /**
-     * Zapisuje dane czastek do plików ..\results_<timestamp>\result<numer_kroku>.
-     * W kolejnych liniach dla kazdej czastki znajduja sie odpowiednio wspolrzedne polozenia x, y, z oraz typ:
-     * 0 - sciana, 1 - krwinka, 2 - osocze
-     */
     private void writePositionsFile(CLBuffer<Float> buffer, CLEvent... events) {
         File resultFile = new File(directoryName, "result" + step + ".csv");
         try (FileWriter writer = new FileWriter(resultFile)) {
@@ -299,9 +256,6 @@ public class DpdSimulation {
         }
     }
 
-    /**
-     * Oblicza i wypisuje informacje o predkosci sredniej wszystkich czasteczek
-     */
     private void printAverageVelocity(CLEvent... events) {
         for(int i = 0; i < VECTOR_SIZE; ++i) {
             averageVelocityPointer.set(i, 0.0f);
@@ -314,7 +268,7 @@ public class DpdSimulation {
         CLEvent fillBuffers = averageVelocity.write(queue, averageVelocityPointer, true, events);
         fillBuffers = partialSums.write(queue, partialSumsPointer, true, fillBuffers);
         CLEvent reductionEvent = dpdKernel.doVectorReduction(queue, newVelocities, partialSums,
-                averageVelocity, numberOfDroplets, globalSizes, null, fillBuffers);
+                averageVelocity, numberOfDroplets, new int[]{numberOfDroplets}, null, fillBuffers);
         Pointer<Float> out = averageVelocity.read(queue, reductionEvent);
         System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
         out.release();
