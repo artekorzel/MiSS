@@ -1,44 +1,12 @@
 package pl.edu.agh.student.dpdsimulator;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
-public class JavaDpdMock {
-    private static final int numberOfSteps = 1;
-    private static final int numberOfDroplets = 100000;
-    private static final float deltaTime = 1.0f;
+public class JavaDpdMock extends Simulation {
     
-    private static final float boxSize = 10.0f;
-    private static final float radiusIn = 0.5f * boxSize;
-    private static final float radiusOut = 0.75f * boxSize;
-    
-    private static final float temperature = 310.0f;
-    private static final float boltzmanConstant = 1f / temperature / 500f;
-    
-    private static final float lambda = 0.63f;
-    private static final float sigma = 0.075f;
-    private static final float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
-    
-    private static final float flowVelocity = 0.05f;
-    private static final float thermalVelocity = 0.0036f;
-    
-    private static final float vesselCutoffRadius = 0.8f;
-    private static final float bloodCutoffRadius = 0.4f;
-    private static final float plasmaCutoffRadius = 0.4f;
-    
-    private static final float vesselDensity = 10000.0f;
-    private static final float bloodDensity = 50000.0f;
-    private static final float plasmaDensity = 50000.0f;
-    
-    private static final float vesselMass = 1000f;
-    private static final float bloodCellMass = 1.14f;
-    private static final float plasmaMass = 1f;
-    
-    private static final float cellRadius = 1f;
-    private static final int numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxSize / cellRadius / cellRadius / cellRadius);
-
     private Random random;
     private int[] cells;
     private int[] cellNeighbours;
@@ -50,27 +18,11 @@ public class JavaDpdMock {
     private float[][] forces;
     private int[] types;
     private int[] states;
-    private DropletParameter[] dropletParameters;
-    
-    private List<DropletParameter> parameters = new ArrayList<>();
+    private Dpd.DropletParameter[] dropletParameters;
     private int step;
-    private int initialRandom;
 
-    public static void main(String[] args) {
-        try {
-            JavaDpdMock simulation = new JavaDpdMock();
-            simulation.initData();
-            simulation.performSimulation();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Alokuje pamiec na karcie graficznej dla potrzebnych struktur oraz tworzy obiekt kernela, 
-     * dzieki ktoremu mozemy wykonywac operacje na karcie graficznej.
-     */
-    private void initData() throws IOException {
+    @Override
+    public void initData() throws IOException {
         random = new Random();
         cells = new int[numberOfDroplets / 1000 * numberOfCells];
         cellNeighbours = new int[numberOfCells * 28];
@@ -84,10 +36,10 @@ public class JavaDpdMock {
         states = new int[numberOfDroplets];
     }    
     
-    private void performSimulation() {
+    @Override
+    public void performSimulation() {
         step = 0;
         initSimulationData();
-        initialRandom = random.nextInt();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
             performSingleStep();
@@ -105,30 +57,8 @@ public class JavaDpdMock {
     }
 
     private void initDropletParameters() {
-        addParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma, gamma);
-        addParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma, gamma);
-        addParameter(plasmaCutoffRadius, plasmaMass, plasmaDensity, lambda, sigma, gamma);
-
-        int size = parameters.size();
-        dropletParameters = new DropletParameter[size];
-        for (int i = 0; i < size; i++) {
-            dropletParameters[i] = parameters.get(i);
-        }
-    }
-
-    private void addParameter(float cutoffRadius, float mass, float density,
-            float lambda, float sigma, float gamma) {
-        DropletParameter dropletParameter = new DropletParameter();
-        dropletParameter.cutoffRadius = cutoffRadius;
-        dropletParameter.mass = mass;
-        
-        float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
-        dropletParameter.repulsionParameter = repulsionParameter;
-        dropletParameter.lambda = lambda;
-        dropletParameter.sigma = sigma;
-        dropletParameter.gamma = gamma;
-
-        parameters.add(dropletParameter);
+        List<Dpd.DropletParameter> parameters = super.createDropletParameters();
+        dropletParameters = parameters.toArray(new Dpd.DropletParameter[parameters.size()]);
     }
 
     private void initStates(){
@@ -209,7 +139,7 @@ public class JavaDpdMock {
     private void calculateForces() {
         for(int dropletId = 0; dropletId < numberOfDroplets * 28; ++dropletId) {
             calculateForces(positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, cellRadius, 
-                    boxSize, numberOfDroplets, numberOfCells, step + initialRandom, dropletId);
+                    boxSize, numberOfDroplets, numberOfCells, step, dropletId);
         }
     }
 
@@ -224,7 +154,7 @@ public class JavaDpdMock {
         for(int dropletId = 0; dropletId < numberOfDroplets * 28; ++dropletId) {
         calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
                 types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
-                step + initialRandom, dropletId);
+                step, dropletId);
         }
     }
 
@@ -238,17 +168,6 @@ public class JavaDpdMock {
         float[][] tmp = velocities;
         velocities = newVelocities;
         newVelocities = tmp;
-    }
-
-    
-    
-    public static class DropletParameter {
-        float cutoffRadius;//promien odciecia
-        float mass;//masa czastki
-        float repulsionParameter;//wspolczynnik odpychania
-        float lambda;
-        float sigma;
-        float gamma;
     }
 
     public static final int VEC_SIZE = 3;
@@ -320,7 +239,7 @@ public class JavaDpdMock {
         return vec;
     }
     
-    public static float[] calculateForce(float[][] positions, float[][] velocities, DropletParameter[] params,
+    public static float[] calculateForce(float[][] positions, float[][] velocities, Dpd.DropletParameter[] params,
         int[] types, int[] cells, int[] cellNeighbours, float cellRadius, float boxSize,
         int numberOfDroplets, int numberOfCells, int dropletId, int dropletCellNeighbourId, int step) {
 
@@ -332,11 +251,11 @@ public class JavaDpdMock {
         float[] dropletVelocity = velocities[dropletId];
 
         int dropletType = types[dropletId];
-        DropletParameter dropletParameter = params[dropletType];
+        Dpd.DropletParameter dropletParameter = params[dropletType];
 
-        float repulsionParameter = dropletParameter.repulsionParameter;
-        float gamma = dropletParameter.gamma;
-        float sigma = dropletParameter.sigma;
+        float repulsionParameter = dropletParameter.repulsionParameter();
+        float gamma = dropletParameter.gamma();
+        float sigma = dropletParameter.sigma();
 
         int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize);
 
@@ -349,8 +268,8 @@ public class JavaDpdMock {
                 float distanceValue = distance(neighbourPosition, dropletPosition);
 
                 int neighbourType = types[neighbourId];
-                DropletParameter neighbourParameter = params[neighbourType];
-                float cutoffRadius = neighbourParameter.cutoffRadius;
+                Dpd.DropletParameter neighbourParameter = params[neighbourType];
+                float cutoffRadius = neighbourParameter.cutoffRadius();
 
                 if(distanceValue < cutoffRadius) {
                     float[] normalizedPositionVector = normalize(neighbourPosition, dropletPosition);
@@ -359,7 +278,7 @@ public class JavaDpdMock {
                         float weightDValue = weightRValue * weightRValue;
 
                         for(int k = 0; k < VEC_SIZE; ++k) {
-                            conservativeForce[k] -= Math.sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
+                            conservativeForce[k] -= Math.sqrt(repulsionParameter * neighbourParameter.repulsionParameter())
                                     * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector[k];
 
                             dissipativeForce[k] += gamma * weightDValue * normalizedPositionVector[k]
@@ -519,7 +438,7 @@ public class JavaDpdMock {
     }
         
     public static void calculateForces(float[][] positions, float[][] velocities, float[][] forces,
-            DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float cellRadius, 
+            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float cellRadius, 
         float boxSize,int numberOfDroplets, int numberOfCells, int step, int fullDropletId) {
         
         int dropletId = fullDropletId / 28;
@@ -554,7 +473,7 @@ public class JavaDpdMock {
     
     public static void calculateNewVelocities(float[][] newPositions, float[][] velocities,
             float[][] predictedVelocities, float[][] newVelocities, float[][] forces,
-            DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float deltaTime, float cellRadius, 
+            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float deltaTime, float cellRadius, 
             float boxSize, int numberOfDroplets, int numberOfCells, int step, int fullDropletId) {
         
         int dropletId = fullDropletId / 28;
