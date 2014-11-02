@@ -17,13 +17,13 @@ public class DpdSimulation {
 
     private static final int VECTOR_SIZE = 4;
 
-    private static final int numberOfSteps = 1;
-    private static final int numberOfDroplets = 1000000;
+    private static final int numberOfSteps = 100;
+    private static final int numberOfDroplets = 100000;
     private static final float deltaTime = 1.0f;
     
     private static final float boxSize = 10.0f;
-    private static final float radiusIn = 0.5f * boxSize;
-    private static final float radiusOut = 0.75f * boxSize;
+    private static final float radiusIn = 0.7f * boxSize;
+    private static final float radiusOut = 0.95f * boxSize;
     
     private static final float temperature = 310.0f;
     private static final float boltzmanConstant = 1f / temperature / 500f;
@@ -74,7 +74,6 @@ public class DpdSimulation {
     private List<DropletParameter> parameters = new ArrayList<>();
     private String directoryName;
     private int step;
-    private int initialRandom;
 
     /**
      * Inicjalizuje dane oraz wykonuje symulacje przeplywu czastek krwi
@@ -130,7 +129,6 @@ public class DpdSimulation {
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
         writePositionsFile(positions, loopEndEvent);
-        initialRandom = random.nextInt();
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
@@ -143,10 +141,6 @@ public class DpdSimulation {
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / 1000000000.0);
         System.out.println("Mean step time: " + (endTime - startTime) / 1000000000.0 / numberOfSteps);
-        
-        /*Pointer<Float> out = forces.read(queue, loopEndEvent);
-        for(int i =0; i < numberOfDroplets * VECTOR_SIZE; i += VECTOR_SIZE)
-            if(out.get(i) != -2)System.out.println(out.get(i) + " " + out.get(i + 1) + " " + out.get(i + 2));*/
     }
     
     private CLEvent initSimulationData() {
@@ -235,7 +229,7 @@ public class DpdSimulation {
      */
     private CLEvent calculateForces(CLEvent previousStepEvent) {
         return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, 
-                cellRadius, boxSize, numberOfDroplets, numberOfCells, step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, previousStepEvent);
+                cellRadius, boxSize, numberOfDroplets, numberOfCells, step, new int[]{numberOfDroplets * 28}, new int[]{28}, previousStepEvent);
     }
 
     /**
@@ -252,7 +246,7 @@ public class DpdSimulation {
     private CLEvent calculateNewVelocities(CLEvent newPositionsAndPredictedVelocitiesEvent) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities, newVelocities, forces, 
                 dropletParameters, types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
-                step + initialRandom, new int[]{numberOfDroplets * 28}, new int[]{28}, newPositionsAndPredictedVelocitiesEvent);
+                step, new int[]{numberOfDroplets * 28}, new int[]{28}, newPositionsAndPredictedVelocitiesEvent);
     }
 
     /**
