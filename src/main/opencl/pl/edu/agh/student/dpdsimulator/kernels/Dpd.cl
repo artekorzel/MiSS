@@ -108,7 +108,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float sigma = dropletParameter.sigma;
     
     int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize);
-    global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 28];
+    global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 27];
     
     int i, j, neighbourId;
     int cellId = dropletCellNeighbours[dropletCellNeighbourId];
@@ -184,7 +184,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, flo
     int cellIdPartY = (cellId / numberOfCellsPerDim) % numberOfCellsPerDim;
     int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
-    int cellIndex = cellId * 28;
+    int cellIndex = cellId * 27;
     cellNeighbours[cellIndex++] = cellId;
     
     if(cellIdPartX > 0) {
@@ -291,7 +291,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours, float cellRadius, flo
         }
     }
     
-    for(int n = (cellId + 1) * 28; cellIndex < n; ++cellIndex) {
+    for(int n = (cellId + 1) * 27; cellIndex < n; ++cellIndex) {
         cellNeighbours[cellIndex] = -1;
     }
 }
@@ -309,11 +309,11 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     }
     
     int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 28) {
+    if(dropletCellNeighbourId >= 27) {
         return;
     }
 
-    local float3 localForces[28];
+    local float3 localForces[27];
     localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params, types, cells, cellNeighbours,
             cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
     
@@ -321,7 +321,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     
     if(dropletCellNeighbourId == 0) {
         float3 force = localForces[0];
-        for(int i = 1; i < 28; ++i) {
+        for(int i = 1; i < 27; ++i) {
             force += localForces[i];
         }
         forces[dropletId] = force;
@@ -364,24 +364,24 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
         global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
         float deltaTime, float cellRadius, float boxSize, int numberOfDroplets, int numberOfCells, int step) {
 
-    int dropletId = get_global_id(0) / 28;
+    int dropletId = get_global_id(0) / 27;
     if (dropletId >= numberOfDroplets) {
         return;
     }
     
     int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 28) {
+    if(dropletCellNeighbourId >= 27) {
         return;
     }
 
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    local float3 localForces[28];
+    local float3 localForces[27];
     localForces[dropletCellNeighbourId] = calculateForce(newPositions, predictedVelocities, params, types, 
             cells, cellNeighbours, cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
     
     if(dropletCellNeighbourId == 0) {
         float3 predictedForce = localForces[0];
-        for(int i = 1; i < 28; ++i) {
+        for(int i = 1; i < 27; ++i) {
             predictedForce += localForces[i];
         }
         newVelocities[dropletId] = velocities[dropletId] + 0.5f * deltaTime 
