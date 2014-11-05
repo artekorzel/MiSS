@@ -12,12 +12,12 @@ public abstract class Simulation {
     
     public static final int numberOfCellNeighbours = 27;
     public static final int numberOfSteps = 100;
-    public static final int numberOfDroplets = 50000;
+    public static final int numberOfDroplets = 60000;
     public static final float deltaTime = 1.0f;
     
-    public static final float boxSize = 10.0f;
-    public static final float radiusIn = 0.5f * boxSize;
-    public static final float radiusOut = 0.75f * boxSize;
+    public static final float boxSize = 10.4f;
+    public static final float radiusIn = 0.75f * boxSize;
+    public static final float radiusOut = 1.0f * boxSize;
     
     public static final float temperature = 310.0f;
     public static final float boltzmanConstant = 1f / temperature / 500f;
@@ -41,7 +41,7 @@ public abstract class Simulation {
     public static final float bloodCellMass = 1.14f;
     public static final float plasmaMass = 1f;
     
-    public static final float cellRadius = 1.0f;
+    public static final float cellRadius = 0.8f;
     public static final int numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxSize / cellRadius / cellRadius / cellRadius);
     public static final int maxDropletsPerCell = (numberOfDroplets / numberOfCells) * 10;
         
