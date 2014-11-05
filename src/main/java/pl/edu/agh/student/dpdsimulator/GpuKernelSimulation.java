@@ -47,7 +47,7 @@ public class GpuKernelSimulation extends Simulation {
         queue = context.createDefaultQueue();
 
         random = new Random();
-        cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell);
+        cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
                 numberOfCells * numberOfCellNeighbours);
         positions = context.createFloatBuffer(CLMem.Usage.InputOutput,

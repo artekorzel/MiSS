@@ -24,8 +24,8 @@ public class JavaDpdMock extends Simulation {
     @Override
     public void initData() throws IOException {
         random = new Random();
-        cells = new int[numberOfDroplets / 1000 * numberOfCells];
-        cellNeighbours = new int[numberOfCells * 28];
+        cells = new int[maxDropletsPerCell * numberOfCells];
+        cellNeighbours = new int[numberOfCells * 27];
         positions = new float[numberOfDroplets][VEC_SIZE];
         newPositions = new float[numberOfDroplets][VEC_SIZE];
         velocities = new float[numberOfDroplets][VEC_SIZE];
@@ -43,6 +43,7 @@ public class JavaDpdMock extends Simulation {
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
             performSingleStep();
+            printAverageVelocity();
             swapPositions();
             swapVelocities();
         }
@@ -122,11 +123,11 @@ public class JavaDpdMock extends Simulation {
     }
     
     private void fillCells(float[][] positions) {
-        fillCells(cells, positions, cellRadius, boxSize, numberOfDroplets, numberOfCells);
+        fillCells(cells, positions);
     }
     
     private void fillCellNeighbours() {
-        fillCellNeighbours(cellNeighbours, cellRadius, boxSize, numberOfCells);
+        fillCellNeighbours(cellNeighbours);
     }
 
     private void performSingleStep() {
@@ -137,21 +138,20 @@ public class JavaDpdMock extends Simulation {
     }
     
     private void calculateForces() {
-        for(int dropletId = 0; dropletId < numberOfDroplets * 28; ++dropletId) {
-            calculateForces(positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, cellRadius, 
-                    boxSize, numberOfDroplets, numberOfCells, step, dropletId);
+        for(int dropletId = 0; dropletId < numberOfDroplets * 27; ++dropletId) {
+            calculateForces(positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, step, dropletId);
         }
     }
 
     private void calculateNewPositionsAndPredictedVelocities() {
         for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
         calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
-                predictedVelocities, deltaTime, lambda, boxSize, dropletId);
+                predictedVelocities, dropletId);
         }
     }
 
     private void calculateNewVelocities() {
-        for(int dropletId = 0; dropletId < numberOfDroplets * 28; ++dropletId) {
+        for(int dropletId = 0; dropletId < numberOfDroplets * 27; ++dropletId) {
         calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
                 types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
                 step, dropletId);
@@ -226,7 +226,7 @@ public class JavaDpdMock extends Simulation {
         return result;
     }
 
-    static float[] normalizePosition(float[] vector, float boxSize) {
+    static float[] normalizePosition(float[] vector) {
         float[] vec = addConst(vector, boxSize);
         return addConst(fmod(addConst(fmod(vec, 2.0f * boxSize), 2.0f * boxSize), 2.0f * boxSize), -1 * boxSize);
     }
@@ -240,8 +240,7 @@ public class JavaDpdMock extends Simulation {
     }
     
     public static float[] calculateForce(float[][] positions, float[][] velocities, Dpd.DropletParameter[] params,
-        int[] types, int[] cells, int[] cellNeighbours, float cellRadius, float boxSize,
-        int numberOfDroplets, int numberOfCells, int dropletId, int dropletCellNeighbourId, int step) {
+        int[] types, int[] cells, int[] cellNeighbours, int dropletId, int dropletCellNeighbourId, int step) {
 
         float[] conservativeForce = new float[]{0.0f, 0.0f, 0.0f};
         float[] dissipativeForce = new float[]{0.0f, 0.0f, 0.0f};
@@ -257,12 +256,12 @@ public class JavaDpdMock extends Simulation {
         float gamma = dropletParameter.gamma();
         float sigma = dropletParameter.sigma();
 
-        int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize);
+        int dropletCellId = calculateCellId(dropletPosition);
 
-        int cellId = cellNeighbours[dropletCellId * 28 + dropletCellNeighbourId];
+        int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
         if(cellId >= 0) {
         int neighbourId = 0, j;
-        for(j = 0, neighbourId = cells[numberOfDroplets / 1000 * cellId]; neighbourId >= 0; neighbourId = cells[numberOfDroplets / 1000 * cellId + ++j]) {
+        for(j = 0, neighbourId = cells[maxDropletsPerCell * cellId]; neighbourId >= 0; neighbourId = cells[maxDropletsPerCell * cellId + ++j]) {
             if(neighbourId != dropletId) {
                 float[] neighbourPosition = positions[neighbourId];
                 float distanceValue = distance(neighbourPosition, dropletPosition);
@@ -285,7 +284,7 @@ public class JavaDpdMock extends Simulation {
                                     * dot(normalizedPositionVector, diff(velocities[neighbourId], dropletVelocity));
 
                             randomForce[k] -= sigma * weightRValue * normalizedPositionVector[k]
-                                    * gaussianRandom(dropletId, neighbourId, numberOfDroplets, step);
+                                    * gaussianRandom(dropletId, neighbourId, step);
                         }
                     }
                 }
@@ -300,22 +299,21 @@ public class JavaDpdMock extends Simulation {
         return result;
     }
         
-    public static void fillCells(int[] cells, float[][] positions, float cellRadius, 
-            float boxSize, int numberOfDroplets, int numberOfCells) {
+    public static void fillCells(int[] cells, float[][] positions) {
         for(int cellId = 0; cellId < numberOfCells; ++cellId) {
             int dropletId = 0, freeId = 0;
             for(; dropletId < numberOfDroplets; ++dropletId) {
                 float[] position = positions[dropletId];
-                int predictedCellId = calculateCellId(position, cellRadius, boxSize);
+                int predictedCellId = calculateCellId(position);
                 if(predictedCellId == cellId) {
-                    cells[numberOfDroplets / 1000 * cellId + freeId++] = dropletId;
+                    cells[maxDropletsPerCell * cellId + freeId++] = dropletId;
                 }
             }
-            cells[numberOfDroplets / 1000 * cellId + freeId] = -1;
+            cells[maxDropletsPerCell * cellId + freeId] = -1;
         }
     }
 
-    public static void fillCellNeighbours(int[] cellNeighbours, float cellRadius, float boxSize, int numberOfCells) {
+    public static void fillCellNeighbours(int[] cellNeighbours) {
         for(int cellId = 0; cellId < numberOfCells; ++cellId) {
             int numberOfCellsPerDim = (int) Math.ceil(2 * boxSize / cellRadius);
             int squareOfNumberOfCellsPerDim = numberOfCellsPerDim * numberOfCellsPerDim;
@@ -324,7 +322,7 @@ public class JavaDpdMock extends Simulation {
             int cellIdPartY = (cellId / numberOfCellsPerDim) % numberOfCellsPerDim;
             int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
-            int cellIndex = cellId * 28;
+            int cellIndex = cellId * 27;
             cellNeighbours[cellIndex++] = cellId;
 
             if(cellIdPartX > 0) {
@@ -431,26 +429,25 @@ public class JavaDpdMock extends Simulation {
                 }
             }
     
-            for(; cellIndex < 28; ++cellIndex) {
+            for(; cellIndex < 27; ++cellIndex) {
                 cellNeighbours[cellIndex] = -1;
             }
         }
     }
         
     public static void calculateForces(float[][] positions, float[][] velocities, float[][] forces,
-            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float cellRadius, 
-        float boxSize,int numberOfDroplets, int numberOfCells, int step, int fullDropletId) {
+            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
         
-        int dropletId = fullDropletId / 28;
+        int dropletId = fullDropletId / 27;
         if (dropletId >= numberOfDroplets) {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % 28;
+        int dropletCellNeighbourId = fullDropletId % 27;
 
         float[] newForce = new float[]{0, 0, 0};
         float[] tmp = calculateForce(positions, velocities, params, types, cells, cellNeighbours,
-                cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
+                dropletId, dropletCellNeighbourId, step);
         for(int j = 0; j < VEC_SIZE; ++j) {
             newForce[j] += tmp[j];
         }
@@ -458,8 +455,7 @@ public class JavaDpdMock extends Simulation {
     }
 
     public static void calculateNewPositionsAndPredictedVelocities(float[][] positions, float[][] velocities,
-            float[][] forces, float[][] newPositions, float[][] predictedVelocities,
-            float deltaTime, float lambda, float boxSize, int dropletId) {
+            float[][] forces, float[][] newPositions, float[][] predictedVelocities, int dropletId) {
 
         float[] newPosition = new float[VEC_SIZE];
         for (int i = 0; i < VEC_SIZE; ++i) {
@@ -467,7 +463,7 @@ public class JavaDpdMock extends Simulation {
                     + deltaTime * velocities[dropletId][i] + 0.5f * deltaTime * deltaTime * forces[dropletId][i];
             predictedVelocities[dropletId][i] = velocities[dropletId][i] + lambda * deltaTime * forces[dropletId][i];
         }
-        float[] normalized = normalizePosition(newPosition, boxSize);
+        float[] normalized = normalizePosition(newPosition);
         System.arraycopy(normalized, 0, newPositions[dropletId], 0, VEC_SIZE);
     }
     
@@ -476,17 +472,16 @@ public class JavaDpdMock extends Simulation {
             Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float deltaTime, float cellRadius, 
             float boxSize, int numberOfDroplets, int numberOfCells, int step, int fullDropletId) {
         
-        int dropletId = fullDropletId / 28;
+        int dropletId = fullDropletId / 27;
         if (dropletId >= numberOfDroplets) {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % 28;
+        int dropletCellNeighbourId = fullDropletId % 27;
 
         float[] predictedForce = new float[]{0, 0, 0};
-        for(int i = 0; i < 28; ++i) {
-            float[] tmp = calculateForce(newPositions, velocities, params, types, cells, cellNeighbours,
-                    cellRadius, boxSize, numberOfDroplets, numberOfCells, dropletId, dropletCellNeighbourId, step);
+        for(int i = 0; i < 27; ++i) {
+            float[] tmp = calculateForce(newPositions, velocities, params, types, cells, cellNeighbours, dropletId, dropletCellNeighbourId, step);
             for(int j = 0; j < VEC_SIZE; ++j) {
                 predictedForce[j] += tmp[j];
             }
@@ -520,16 +515,26 @@ public class JavaDpdMock extends Simulation {
         return Z1;
     }
 
-    public static float gaussianRandom(int dropletId, int neighbourId, int numberOfDroplets, int step) {
+    public static float gaussianRandom(int dropletId, int neighbourId, int step) {
         int seed = calculateHash(dropletId, neighbourId);
         float U1 = (float) ((rand(seed, step) + 1.0) / 2);
         float U2 = (float) ((rand(seed, step) + 1.0) / 2);
         return normalRand(U1, U2);
     }
 
-    public static int calculateCellId(float[] position, float cellRadius, float boxSize) {
+    public static int calculateCellId(float[] position) {
         return ((int) ((position[0] + boxSize) / cellRadius))
                 + ((int) (2 * boxSize / cellRadius)) * (((int) ((position[1] + boxSize) / cellRadius))
                 + ((int) (2 * boxSize / cellRadius)) * ((int) ((position[2] + boxSize) / cellRadius)));
+    }
+
+    private void printAverageVelocity() {
+        float[] vel = new float[]{0f, 0f, 0f};
+        for(float[] velocity : velocities) {
+            for(int i = 0; i < VEC_SIZE; ++i) {
+                vel[i] += velocity[i];
+            }
+        }        
+        System.out.println("avgVel = (" + vel[0] / numberOfDroplets + ", " + vel[1] / numberOfDroplets + ", " + vel[2] / numberOfDroplets + ")");
     }
 }
