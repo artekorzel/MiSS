@@ -14,8 +14,9 @@ float weightR(float distanceValue, float cutoffRadius) {
     return 1.0 - distanceValue / cutoffRadius;
 }
 
-float3 normalizePosition(float3 vector, float boxSize) {
-    return fmod(fmod(vector + boxSize, 2.0f * boxSize) + 2.0f * boxSize, 2.0f * boxSize) - boxSize;
+float3 normalizePosition(float3 vector, float boxSize, float boxWidth) {
+    float3 changeVector = (float3)(boxSize, boxWidth, boxSize);
+    return fmod(fmod(vector + changeVector, 2.0f * changeVector) + 2.0f * changeVector, 2.0f * changeVector) - changeVector;
 }
 
 int calculateHash(int d1, int d2) {    
@@ -55,15 +56,16 @@ float gaussianRandom(int dropletId, int neighbourId, int step) {
     return normalRand(U1, U2);
 }
 
-int calculateCellId(float3 position, float cellRadius, float boxSize) {
+int calculateCellId(float3 position, float cellRadius, float boxSize, float boxWidth) {
     return ((int)((position.x + boxSize) / cellRadius)) + 
-            ((int)(2 * boxSize / cellRadius)) * (((int)((position.y + boxSize) / cellRadius)) + 
-                    ((int)(2 * boxSize / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
+            ((int)(2 * boxSize / cellRadius)) * (((int)((position.y + boxWidth) / cellRadius)) + 
+                    ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
 }
 
 float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
-        global int* types, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize,
-        int maxDropletsPerCell, int numberOfCells, int dropletId, int dropletCellNeighbourId, int step) {
+        global int* types, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
+        float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int dropletCellNeighbourId, 
+        int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
@@ -79,7 +81,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float gamma = dropletParameter.gamma;
     float sigma = dropletParameter.sigma;
     
-    int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize);
+    int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize, boxWidth);
     global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 27];
     
     int i, j, neighbourId;
@@ -123,7 +125,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 }
 
 kernel void fillCells(global int* cells, global float3* positions, float cellRadius, 
-        float boxSize, int numberOfDroplets, int maxDropletsPerCell, int numberOfCells) {
+        float boxSize, float boxWidth, int numberOfDroplets, int maxDropletsPerCell, int numberOfCells) {
 
     int cellId = get_global_id(0);
     if (cellId >= numberOfCells) {
@@ -133,7 +135,7 @@ kernel void fillCells(global int* cells, global float3* positions, float cellRad
     int dropletId = 0, freeId = 0;
     for(; dropletId < numberOfDroplets; ++dropletId) {
         float3 position = positions[dropletId];
-        int predictedCellId = calculateCellId(position, cellRadius, boxSize);
+        int predictedCellId = calculateCellId(position, cellRadius, boxSize, boxWidth);
         if(predictedCellId == cellId) {
             cells[maxDropletsPerCell * cellId + freeId++] = dropletId;
         }
@@ -144,18 +146,19 @@ kernel void fillCells(global int* cells, global float3* positions, float cellRad
 }
 
 kernel void fillCellNeighbours(global int* cellNeighbours, 
-        float cellRadius, float boxSize, int numberOfCells) {
+        float cellRadius, float boxSize, float boxWidth, int numberOfCells) {
     
     int cellId = get_global_id(0);
     if (cellId >= numberOfCells) {
         return;
     }
     
-    int numberOfCellsPerDim = ceil(2 * boxSize / cellRadius);
-    int squareOfNumberOfCellsPerDim = numberOfCellsPerDim * numberOfCellsPerDim;
+    int numberOfCellsPerXZDim = ceil(2 * boxSize / cellRadius);
+    int numberOfCellsPerYDim = ceil(2 * boxWidth / cellRadius);
+    int squareOfNumberOfCellsPerDim = numberOfCellsPerXZDim * numberOfCellsPerYDim;
     
-    int cellIdPartX = cellId % numberOfCellsPerDim;
-    int cellIdPartY = (cellId / numberOfCellsPerDim) % numberOfCellsPerDim;
+    int cellIdPartX = cellId % numberOfCellsPerXZDim;
+    int cellIdPartY = (cellId / numberOfCellsPerXZDim) % numberOfCellsPerYDim;
     int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
     int cellIndex = cellId * 27;
@@ -165,31 +168,31 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         cellNeighbours[cellIndex++] = cellId - 1;
     }
     
-    if(cellIdPartX < numberOfCellsPerDim - 1) {
+    if(cellIdPartX < numberOfCellsPerXZDim - 1) {
         cellNeighbours[cellIndex++] = cellId + 1;
     }
     
     if(cellIdPartY > 0) {
-        cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim;
+        cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim;
         
         if(cellIdPartX > 0) {
-            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim - 1;
+            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim - 1;
         }
 
-        if(cellIdPartX < numberOfCellsPerDim - 1) {
-            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim + 1;
+        if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim + 1;
         }
     }
     
-    if(cellIdPartY < numberOfCellsPerDim - 1) {
-        cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim;
+    if(cellIdPartY < numberOfCellsPerYDim - 1) {
+        cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim;
         
         if(cellIdPartX > 0) {
-            cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim - 1;
+            cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim - 1;
         }
 
-        if(cellIdPartX < numberOfCellsPerDim - 1) {
-            cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim + 1;
+        if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+            cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim + 1;
         }
     }
     
@@ -200,67 +203,67 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
             cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 1;
         }
 
-        if(cellIdPartX < numberOfCellsPerDim - 1) {
+        if(cellIdPartX < numberOfCellsPerXZDim - 1) {
             cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
         }
 
         if(cellIdPartY > 0) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim;
+            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
             }
 
-            if(cellIdPartX < numberOfCellsPerDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim + 1;
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
             }
         }
 
-        if(cellIdPartY < numberOfCellsPerDim - 1) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim;
+        if(cellIdPartY < numberOfCellsPerYDim - 1) {
+            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
             }
 
-            if(cellIdPartX < numberOfCellsPerDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim + 1;
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
             }
         }
     }
     
-    if(cellIdPartZ < numberOfCellsPerDim - 1) {
+    if(cellIdPartZ < numberOfCellsPerXZDim - 1) {
         cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim;
         
         if(cellIdPartX > 0) {
             cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - 1;
         }
 
-        if(cellIdPartX < numberOfCellsPerDim - 1) {
+        if(cellIdPartX < numberOfCellsPerXZDim - 1) {
             cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + 1;
         }
 
         if(cellIdPartY > 0) {
-            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim;
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim - 1;
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
             }
 
-            if(cellIdPartX < numberOfCellsPerDim - 1) {
-                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim + 1;
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
             }
         }
 
-        if(cellIdPartY < numberOfCellsPerDim - 1) {
-            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim;
+        if(cellIdPartY < numberOfCellsPerYDim - 1) {
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim - 1;
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
             }
 
-            if(cellIdPartX < numberOfCellsPerDim - 1) {
-                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim + 1;
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
             }
         }
     }
@@ -272,10 +275,10 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
         global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
-        float cellRadius, float boxSize,int numberOfDroplets, int maxDropletsPerCell, 
+        float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, int maxDropletsPerCell, 
         int numberOfCells, int step) {
 
-    int dropletId = get_global_id(0) / get_local_size(0);
+    int dropletId = get_global_id(0) / 27;
     if (dropletId >= numberOfDroplets) {
         return;
     }
@@ -287,7 +290,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
 
     local float3 localForces[27];
     localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params, types, 
-            cells, cellNeighbours, cellRadius, boxSize, maxDropletsPerCell, numberOfCells, 
+            cells, cellNeighbours, cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, 
             dropletId, dropletCellNeighbourId, step);
     
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
@@ -304,7 +307,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
 kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
         global float3* forces, global float3* newPositions, global float3* predictedVelocities,
         global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, 
-        float boxSize) {
+        float boxSize, float boxWidth) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -319,7 +322,7 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity
             + 0.5f * deltaTime * deltaTime * dropletForce / dropletMass;
             
-    newPositions[dropletId] = normalizePosition(newPosition, boxSize);
+    newPositions[dropletId] = normalizePosition(newPosition, boxSize, boxWidth);
     
     predictedVelocities[dropletId] = dropletVelocity 
             + dropletParameter.lambda * deltaTime * dropletForce / dropletMass;
@@ -328,8 +331,8 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
         global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
         global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
-        float deltaTime, float cellRadius, float boxSize, int numberOfDroplets, int maxDropletsPerCell,
-        int numberOfCells, int step) {
+        float deltaTime, float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, 
+        int maxDropletsPerCell, int numberOfCells, int step) {
 
     int dropletId = get_global_id(0) / 27;
     if (dropletId >= numberOfDroplets) {
@@ -344,7 +347,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     local float3 localForces[27];
     localForces[dropletCellNeighbourId] = calculateForce(newPositions, predictedVelocities, 
-            params, types, cells, cellNeighbours, cellRadius, boxSize, maxDropletsPerCell, 
+            params, types, cells, cellNeighbours, cellRadius, boxSize, boxWidth, maxDropletsPerCell, 
             numberOfCells, dropletId, dropletCellNeighbourId, step);
     
     if(dropletCellNeighbourId == 0) {
@@ -358,7 +361,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
 }
 
 kernel void generateTube(global float3* vector, global int* types, global int* states, 
-        int numberOfDroplets, float radiusIn, float radiusOut, float height) {
+        int numberOfDroplets, float radiusIn, float boxSize, float boxWidth) {
     
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -367,10 +370,9 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     
     int seed = states[dropletId];   
     
-    float x = (rand(&seed, 1) * 2 - 1) * radiusOut;
-    float y = (rand(&seed, 1) * 2 - 1) * height;
-    float rangeOut = sqrt(radiusOut * radiusOut - x * x);
-    float z = (rand(&seed, 1) * 2 - 1) * rangeOut;
+    float x = (rand(&seed, 1) * 2 - 1) * boxSize;
+    float y = (rand(&seed, 1) * 2 - 1) * boxWidth;
+    float z = (rand(&seed, 1) * 2 - 1) * boxSize;
     
     float distanceFromY = sqrt(x * x + z * z);
     if (distanceFromY >= radiusIn) {

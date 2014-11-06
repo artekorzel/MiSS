@@ -25,7 +25,7 @@ public class JavaDpdMock extends Simulation {
     public void initData() throws IOException {
         random = new Random();
         cells = new int[maxDropletsPerCell * numberOfCells];
-        cellNeighbours = new int[numberOfCells * 27];
+        cellNeighbours = new int[numberOfCells * numberOfCellNeighbours];
         positions = new float[numberOfDroplets][VEC_SIZE];
         newPositions = new float[numberOfDroplets][VEC_SIZE];
         velocities = new float[numberOfDroplets][VEC_SIZE];
@@ -69,7 +69,7 @@ public class JavaDpdMock extends Simulation {
     }
     
     private void initPositionsAndVelocities() {
-        generateTube(positions, types, states, numberOfDroplets, radiusIn, radiusOut, boxSize);
+        generateTube(positions, types, states, numberOfDroplets, radiusIn, boxSize, boxWidth);
         generateRandomVector(velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets);
     }
     
@@ -94,14 +94,13 @@ public class JavaDpdMock extends Simulation {
     }
     
     void generateTube(float[][] vector, int[] types, int[] states, int numberOfDroplets, 
-            float radiusIn, float radiusOut, float height) {
+            float radiusIn, float boxSize, float boxWidth) {
         for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
             int seed = states[dropletId];   
 
-            float x = (rand(seed, 1) * 2 - 1) * radiusOut;
-            float y = (rand(seed, 1) * 2 - 1) * height;
-            float rangeOut = (float) Math.sqrt(radiusOut * radiusOut - x * x);
-            float z = (rand(seed, 1) * 2 - 1) * rangeOut;
+            float x = (rand(seed, 1) * 2 - 1) * boxSize;
+            float y = (rand(seed, 1) * 2 - 1) * boxWidth;
+            float z = (rand(seed, 1) * 2 - 1) * boxSize;
 
             float distanceFromY = (float) Math.sqrt(x * x + z * z);
             if (distanceFromY >= radiusIn) {
@@ -138,7 +137,7 @@ public class JavaDpdMock extends Simulation {
     }
     
     private void calculateForces() {
-        for(int dropletId = 0; dropletId < numberOfDroplets * 27; ++dropletId) {
+        for(int dropletId = 0; dropletId < numberOfDroplets * numberOfCellNeighbours; ++dropletId) {
             calculateForces(positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, step, dropletId);
         }
     }
@@ -151,10 +150,9 @@ public class JavaDpdMock extends Simulation {
     }
 
     private void calculateNewVelocities() {
-        for(int dropletId = 0; dropletId < numberOfDroplets * 27; ++dropletId) {
+        for(int dropletId = 0; dropletId < numberOfDroplets * numberOfCellNeighbours; ++dropletId) {
         calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
-                types, cells, cellNeighbours, deltaTime, cellRadius, boxSize, numberOfDroplets, numberOfCells, 
-                step, dropletId);
+                types, cells, cellNeighbours, step, dropletId);
         }
     }
 
@@ -217,10 +215,10 @@ public class JavaDpdMock extends Simulation {
         return result;
     }
 
-    private static float[] fmod(float[] vector, float factor) {
+    private static float[] fmod(float[] vector, float[] factor) {
         float[] result = new float[VEC_SIZE];
         for (int k = 0; k < VEC_SIZE; ++k) {
-            result[k] = vector[k] - factor * ((int) (vector[k] / factor));
+            result[k] = vector[k] - factor[k] * ((int) (vector[k] / factor[k]));
         }
 
         return result;
@@ -228,7 +226,17 @@ public class JavaDpdMock extends Simulation {
 
     static float[] normalizePosition(float[] vector) {
         float[] vec = addConst(vector, boxSize);
-        return addConst(fmod(addConst(fmod(vec, 2.0f * boxSize), 2.0f * boxSize), 2.0f * boxSize), -1 * boxSize);
+        float[] factor1 = new float[]{2f * boxSize, 2f * boxWidth, 2f * boxSize};
+        float[] factor2 = new float[]{-boxSize, -boxWidth, -boxSize};
+        return add(fmod(add(fmod(vec, factor1), factor1), factor1), factor2);
+    }
+
+    private static float[] add(float[] vector, float[] vector2) {
+        float[] vec = new float[VEC_SIZE];
+        for (int i = 0; i < VEC_SIZE; ++i) {
+            vec[i] = vector[i] + vector2[i];
+        }
+        return vec;
     }
 
     private static float[] addConst(float[] vector, float boxSize) {
@@ -258,7 +266,7 @@ public class JavaDpdMock extends Simulation {
 
         int dropletCellId = calculateCellId(dropletPosition);
 
-        int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
+        int cellId = cellNeighbours[dropletCellId * numberOfCellNeighbours + dropletCellNeighbourId];
         if(cellId >= 0) {
         int neighbourId = 0, j;
         for(j = 0, neighbourId = cells[maxDropletsPerCell * cellId]; neighbourId >= 0; neighbourId = cells[maxDropletsPerCell * cellId + ++j]) {
@@ -315,45 +323,42 @@ public class JavaDpdMock extends Simulation {
 
     public static void fillCellNeighbours(int[] cellNeighbours) {
         for(int cellId = 0; cellId < numberOfCells; ++cellId) {
-            int numberOfCellsPerDim = (int) Math.ceil(2 * boxSize / cellRadius);
-            int squareOfNumberOfCellsPerDim = numberOfCellsPerDim * numberOfCellsPerDim;
+            int numberOfCellsPerXZDim = (int) Math.ceil(2 * boxSize / cellRadius);
+            int numberOfCellsPerYDim = (int) Math.ceil(2 * boxWidth / cellRadius);
+            int squareOfNumberOfCellsPerDim = numberOfCellsPerXZDim * numberOfCellsPerYDim;
 
-            int cellIdPartX = cellId % numberOfCellsPerDim;
-            int cellIdPartY = (cellId / numberOfCellsPerDim) % numberOfCellsPerDim;
+            int cellIdPartX = cellId % numberOfCellsPerXZDim;
+            int cellIdPartY = (cellId / numberOfCellsPerXZDim) % numberOfCellsPerYDim;
             int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
-            int cellIndex = cellId * 27;
+            int cellIndex = cellId * numberOfCellNeighbours;
             cellNeighbours[cellIndex++] = cellId;
 
-            if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - 1;
-            }
-
-            if(cellIdPartX < numberOfCellsPerDim - 1) {
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                 cellNeighbours[cellIndex++] = cellId + 1;
             }
 
             if(cellIdPartY > 0) {
-                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim;
+                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim;
 
                 if(cellIdPartX > 0) {
-                    cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim - 1;
+                    cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim - 1;
                 }
 
-                if(cellIdPartX < numberOfCellsPerDim - 1) {
-                    cellNeighbours[cellIndex++] = cellId - numberOfCellsPerDim + 1;
+                if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                    cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim + 1;
                 }
             }
 
-            if(cellIdPartY < numberOfCellsPerDim - 1) {
-                cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim;
+            if(cellIdPartY < numberOfCellsPerYDim - 1) {
+                cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim;
 
                 if(cellIdPartX > 0) {
-                    cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim - 1;
+                    cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim - 1;
                 }
 
-                if(cellIdPartX < numberOfCellsPerDim - 1) {
-                    cellNeighbours[cellIndex++] = cellId + numberOfCellsPerDim + 1;
+                if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                    cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim + 1;
                 }
             }
 
@@ -364,72 +369,72 @@ public class JavaDpdMock extends Simulation {
                     cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 1;
                 }
 
-                if(cellIdPartX < numberOfCellsPerDim - 1) {
+                if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                     cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
                 }
 
                 if(cellIdPartY > 0) {
-                    cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim;
+                    cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
 
                     if(cellIdPartX > 0) {
-                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim - 1;
+                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
                     }
 
-                    if(cellIdPartX < numberOfCellsPerDim - 1) {
-                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerDim + 1;
+                    if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
                     }
                 }
 
-                if(cellIdPartY < numberOfCellsPerDim - 1) {
-                    cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim;
+                if(cellIdPartY < numberOfCellsPerYDim - 1) {
+                    cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
 
                     if(cellIdPartX > 0) {
-                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim - 1;
+                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
                     }
 
-                    if(cellIdPartX < numberOfCellsPerDim - 1) {
-                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerDim + 1;
+                    if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
                     }
                 }
             }
 
-            if(cellIdPartZ < numberOfCellsPerDim - 1) {
+            if(cellIdPartZ < numberOfCellsPerXZDim - 1) {
                 cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim;
 
                 if(cellIdPartX > 0) {
                     cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - 1;
                 }
 
-                if(cellIdPartX < numberOfCellsPerDim - 1) {
+                if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                     cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + 1;
                 }
 
                 if(cellIdPartY > 0) {
-                    cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim;
+                    cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
 
                     if(cellIdPartX > 0) {
-                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim - 1;
+                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
                     }
 
-                    if(cellIdPartX < numberOfCellsPerDim - 1) {
-                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerDim + 1;
+                    if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
                     }
                 }
 
-                if(cellIdPartY < numberOfCellsPerDim - 1) {
-                    cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim;
+                if(cellIdPartY < numberOfCellsPerYDim - 1) {
+                    cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
 
                     if(cellIdPartX > 0) {
-                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim - 1;
+                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
                     }
 
-                    if(cellIdPartX < numberOfCellsPerDim - 1) {
-                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerDim + 1;
+                    if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                        cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
                     }
                 }
             }
     
-            for(; cellIndex < 27; ++cellIndex) {
+            for(int n = (cellId + 1) * numberOfCellNeighbours; cellIndex < n; ++cellIndex) {
                 cellNeighbours[cellIndex] = -1;
             }
         }
@@ -438,12 +443,12 @@ public class JavaDpdMock extends Simulation {
     public static void calculateForces(float[][] positions, float[][] velocities, float[][] forces,
             Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
         
-        int dropletId = fullDropletId / 27;
+        int dropletId = fullDropletId / numberOfCellNeighbours;
         if (dropletId >= numberOfDroplets) {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % 27;
+        int dropletCellNeighbourId = fullDropletId % numberOfCellNeighbours;
 
         float[] newForce = new float[]{0, 0, 0};
         float[] tmp = calculateForce(positions, velocities, params, types, cells, cellNeighbours,
@@ -469,18 +474,17 @@ public class JavaDpdMock extends Simulation {
     
     public static void calculateNewVelocities(float[][] newPositions, float[][] velocities,
             float[][] predictedVelocities, float[][] newVelocities, float[][] forces,
-            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, float deltaTime, float cellRadius, 
-            float boxSize, int numberOfDroplets, int numberOfCells, int step, int fullDropletId) {
+            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
         
-        int dropletId = fullDropletId / 27;
+        int dropletId = fullDropletId / numberOfCellNeighbours;
         if (dropletId >= numberOfDroplets) {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % 27;
+        int dropletCellNeighbourId = fullDropletId % numberOfCellNeighbours;
 
         float[] predictedForce = new float[]{0, 0, 0};
-        for(int i = 0; i < 27; ++i) {
+        for(int i = 0; i < numberOfCellNeighbours; ++i) {
             float[] tmp = calculateForce(newPositions, velocities, params, types, cells, cellNeighbours, dropletId, dropletCellNeighbourId, step);
             for(int j = 0; j < VEC_SIZE; ++j) {
                 predictedForce[j] += tmp[j];
@@ -524,8 +528,8 @@ public class JavaDpdMock extends Simulation {
 
     public static int calculateCellId(float[] position) {
         return ((int) ((position[0] + boxSize) / cellRadius))
-                + ((int) (2 * boxSize / cellRadius)) * (((int) ((position[1] + boxSize) / cellRadius))
-                + ((int) (2 * boxSize / cellRadius)) * ((int) ((position[2] + boxSize) / cellRadius)));
+                + ((int) (2 * boxSize / cellRadius)) * (((int) ((position[1] + boxWidth) / cellRadius))
+                + ((int) (2 * boxWidth / cellRadius)) * ((int) ((position[2] + boxSize) / cellRadius)));
     }
 
     private void printAverageVelocity() {
