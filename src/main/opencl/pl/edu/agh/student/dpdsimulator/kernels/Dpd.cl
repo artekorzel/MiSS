@@ -283,10 +283,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
         return;
     }
     
-    int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 27) {
-        return;
-    }
+    int dropletCellNeighbourId = get_global_id(0) % 27;
 
     local float3 localForces[27];
     localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params, types, 
@@ -339,10 +336,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
         return;
     }
     
-    int dropletCellNeighbourId = get_local_id(0);
-    if(dropletCellNeighbourId >= 27) {
-        return;
-    }
+    int dropletCellNeighbourId = get_global_id(0) % 27;
 
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     local float3 localForces[27];

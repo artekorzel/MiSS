@@ -11,12 +11,12 @@ public abstract class Simulation {
     public static final double NANOS_IN_SECOND = 1000000000.0;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 10;
-    public static final int numberOfDroplets = 1000000;
+    public static final int numberOfSteps = 100;
+    public static final int numberOfDroplets = 50000;
     public static final float deltaTime = 1.0f;
     
     public static final float boxSize = 10f;
-    public static final float boxWidth = boxSize * 1.12f;
+    public static final float boxWidth = boxSize * 2;
     public static final float radiusIn = 0.8f * boxSize;
     
     public static final float temperature = 310.0f;
@@ -41,7 +41,7 @@ public abstract class Simulation {
     public static final float bloodCellMass = 1.14f;
     public static final float plasmaMass = 1f;
     
-    public static final float cellRadius = 0.8f;
+    public static final float cellRadius = 2f;
     public static final int numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxWidth / cellRadius / cellRadius / cellRadius);
     public static final int maxDropletsPerCell = (numberOfDroplets / numberOfCells) * 5;
         

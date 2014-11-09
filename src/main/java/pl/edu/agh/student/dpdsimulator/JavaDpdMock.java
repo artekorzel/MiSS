@@ -1,8 +1,11 @@
 package pl.edu.agh.student.dpdsimulator;
 
+import com.nativelibs4java.opencl.CLEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import static pl.edu.agh.student.dpdsimulator.Simulation.NANOS_IN_SECOND;
+import static pl.edu.agh.student.dpdsimulator.Simulation.numberOfSteps;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public class JavaDpdMock extends Simulation {
@@ -37,9 +40,11 @@ public class JavaDpdMock extends Simulation {
     }    
     
     @Override
-    public void performSimulation() {
+    public void performSimulation() {        
+        long startTime = System.nanoTime();
         step = 0;
         initSimulationData();
+        long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
             performSingleStep();
@@ -47,6 +52,9 @@ public class JavaDpdMock extends Simulation {
             swapPositions();
             swapVelocities();
         }
+        long endTime = System.nanoTime();
+        System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);
     }
     
     private void initSimulationData() {
@@ -64,33 +72,13 @@ public class JavaDpdMock extends Simulation {
 
     private void initStates(){
         for(int i = 0; i < numberOfDroplets; i++){
-            states[i] = random.nextInt(2147483647);
+            states[i] = random.nextInt(Integer.MAX_VALUE);
         }
     }
     
     private void initPositionsAndVelocities() {
         generateTube(positions, types, states, numberOfDroplets, radiusIn, boxSize, boxWidth);
         generateRandomVector(velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets);
-    }
-    
-    void generateRandomVector(float[][] vector, int[] states, int[] types, float thermalVelocity, float flowVelocity, int numberOfDroplets) {
-        for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
-            float x, y, z;
-            int seed = states[dropletId];
-            if(types[dropletId] == 0){
-                x = 0.0f;
-                y = 0.0f;
-                z = 0.0f;
-            } else {
-                x = (rand(seed, 1) * 2 - 1) * thermalVelocity;
-                y = ((rand(seed, 1) * 2 - 1) * flowVelocity + flowVelocity) / 2.0f;
-                z = (rand(seed, 1) * 2 - 1) * thermalVelocity;
-            }
-            states[dropletId] = seed;
-            vector[dropletId][0] = x;
-            vector[dropletId][1] = y;
-            vector[dropletId][2] = z;
-        }
     }
     
     void generateTube(float[][] vector, int[] types, int[] states, int numberOfDroplets, 
@@ -121,6 +109,26 @@ public class JavaDpdMock extends Simulation {
         }
     }
     
+    void generateRandomVector(float[][] vector, int[] states, int[] types, float thermalVelocity, float flowVelocity, int numberOfDroplets) {
+        for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
+            float x, y, z;
+            int seed = states[dropletId];
+            if(types[dropletId] == 0){
+                x = 0.0f;
+                y = 0.0f;
+                z = 0.0f;
+            } else {
+                x = (rand(seed, 1) * 2 - 1) * thermalVelocity;
+                y = ((rand(seed, 1) * 2 - 1) * flowVelocity + flowVelocity) / 2.0f;
+                z = (rand(seed, 1) * 2 - 1) * thermalVelocity;
+            }
+            states[dropletId] = seed;
+            vector[dropletId][0] = x;
+            vector[dropletId][1] = y;
+            vector[dropletId][2] = z;
+        }
+    }
+    
     private void fillCells(float[][] positions) {
         fillCells(cells, positions);
     }
@@ -144,15 +152,15 @@ public class JavaDpdMock extends Simulation {
 
     private void calculateNewPositionsAndPredictedVelocities() {
         for(int dropletId = 0; dropletId < numberOfDroplets; ++dropletId) {
-        calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
-                predictedVelocities, dropletId);
+            calculateNewPositionsAndPredictedVelocities(positions, velocities, forces, newPositions,
+                    predictedVelocities, dropletId);
         }
     }
 
     private void calculateNewVelocities() {
         for(int dropletId = 0; dropletId < numberOfDroplets * numberOfCellNeighbours; ++dropletId) {
-        calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
-                types, cells, cellNeighbours, step, dropletId);
+            calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
+                    types, cells, cellNeighbours, step, dropletId);
         }
     }
 
@@ -225,24 +233,16 @@ public class JavaDpdMock extends Simulation {
     }
 
     static float[] normalizePosition(float[] vector) {
-        float[] vec = addConst(vector, boxSize);
+        float[] factor = new float[]{boxSize, boxWidth, boxSize};
         float[] factor1 = new float[]{2f * boxSize, 2f * boxWidth, 2f * boxSize};
         float[] factor2 = new float[]{-boxSize, -boxWidth, -boxSize};
-        return add(fmod(add(fmod(vec, factor1), factor1), factor1), factor2);
+        return add(fmod(add(fmod(add(vector, factor), factor1), factor1), factor1), factor2);
     }
 
     private static float[] add(float[] vector, float[] vector2) {
         float[] vec = new float[VEC_SIZE];
         for (int i = 0; i < VEC_SIZE; ++i) {
             vec[i] = vector[i] + vector2[i];
-        }
-        return vec;
-    }
-
-    private static float[] addConst(float[] vector, float boxSize) {
-        float[] vec = new float[VEC_SIZE];
-        for (int i = 0; i < VEC_SIZE; ++i) {
-            vec[i] = vector[i] + boxSize;
         }
         return vec;
     }
@@ -317,7 +317,9 @@ public class JavaDpdMock extends Simulation {
                     cells[maxDropletsPerCell * cellId + freeId++] = dropletId;
                 }
             }
-            cells[maxDropletsPerCell * cellId + freeId] = -1;
+            for(; freeId < maxDropletsPerCell; ++freeId) {
+                cells[maxDropletsPerCell * cellId + freeId] = -1;
+            }
         }
     }
 
@@ -333,6 +335,10 @@ public class JavaDpdMock extends Simulation {
 
             int cellIndex = cellId * numberOfCellNeighbours;
             cellNeighbours[cellIndex++] = cellId;
+
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId - 1;
+            }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                 cellNeighbours[cellIndex++] = cellId + 1;
@@ -433,7 +439,7 @@ public class JavaDpdMock extends Simulation {
                     }
                 }
             }
-    
+
             for(int n = (cellId + 1) * numberOfCellNeighbours; cellIndex < n; ++cellIndex) {
                 cellNeighbours[cellIndex] = -1;
             }
@@ -448,15 +454,23 @@ public class JavaDpdMock extends Simulation {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % numberOfCellNeighbours;
-
-        float[] newForce = new float[]{0, 0, 0};
-        float[] tmp = calculateForce(positions, velocities, params, types, cells, cellNeighbours,
-                dropletId, dropletCellNeighbourId, step);
-        for(int j = 0; j < VEC_SIZE; ++j) {
-            newForce[j] += tmp[j];
+        float localForces[][] = new float[numberOfCellNeighbours][VEC_SIZE];
+        for(int dropletCellNeighbourId = 0; dropletCellNeighbourId < numberOfCellNeighbours; ++dropletCellNeighbourId) {
+            float[] tmp = calculateForce(positions, velocities, params, 
+                    types, cells, cellNeighbours, dropletId, dropletCellNeighbourId, step);
+            for(int j = 0; j < VEC_SIZE; ++j) {
+                localForces[dropletCellNeighbourId][j] = tmp[j];
+            }
         }
-        System.arraycopy(newForce, 0, forces[dropletId], 0, VEC_SIZE);
+        
+        for(int j = 0; j < VEC_SIZE; ++j) {
+            forces[dropletId][j] = 0;
+        }
+        for(int i = 0; i < numberOfCellNeighbours; ++i) {
+            for(int j = 0; j < VEC_SIZE; ++j) {
+                forces[dropletId][j] += localForces[i][j];
+            }
+        }
     }
 
     public static void calculateNewPositionsAndPredictedVelocities(float[][] positions, float[][] velocities,
@@ -469,7 +483,9 @@ public class JavaDpdMock extends Simulation {
             predictedVelocities[dropletId][i] = velocities[dropletId][i] + lambda * deltaTime * forces[dropletId][i];
         }
         float[] normalized = normalizePosition(newPosition);
-        System.arraycopy(normalized, 0, newPositions[dropletId], 0, VEC_SIZE);
+        for (int i = 0; i < VEC_SIZE; ++i) {
+            newPositions[dropletId][i] = normalized[i];
+        }
     }
     
     public static void calculateNewVelocities(float[][] newPositions, float[][] velocities,
@@ -481,18 +497,20 @@ public class JavaDpdMock extends Simulation {
             return;
         }
     
-        int dropletCellNeighbourId = fullDropletId % numberOfCellNeighbours;
-
-        float[] predictedForce = new float[]{0, 0, 0};
-        for(int i = 0; i < numberOfCellNeighbours; ++i) {
-            float[] tmp = calculateForce(newPositions, velocities, params, types, cells, cellNeighbours, dropletId, dropletCellNeighbourId, step);
-            for(int j = 0; j < VEC_SIZE; ++j) {
-                predictedForce[j] += tmp[j];
+        float localVel[][] = new float[numberOfCellNeighbours][VEC_SIZE];
+        for(int dropletCellNeighbourId = 0; dropletCellNeighbourId < 27; ++dropletCellNeighbourId) {
+            for(int i = 0; i < numberOfCellNeighbours; ++i) {
+                float[] tmp = calculateForce(newPositions, velocities, params, types, cells, cellNeighbours, dropletId, dropletCellNeighbourId, step);
+                for(int j = 0; j < VEC_SIZE; ++j) {
+                    localVel[i][j] = tmp[j];
+                }
             }
         }
 
-        for (int i = 0; i < VEC_SIZE; ++i) {
-            newVelocities[dropletId][i] = velocities[dropletId][i] + 0.5f * deltaTime * (forces[dropletId][i] + predictedForce[i]);
+        for(int i = 0; i < numberOfCellNeighbours; ++i) {
+            for(int j = 0; j < VEC_SIZE; ++j) {
+                newVelocities[dropletId][j] = velocities[dropletId][j] + 0.5f * deltaTime * (forces[dropletId][j] + localVel[i][j]);
+            }
         }
     }
 
@@ -527,14 +545,14 @@ public class JavaDpdMock extends Simulation {
     }
 
     public static int calculateCellId(float[] position) {
-        return ((int) ((position[0] + boxSize) / cellRadius))
-                + ((int) (2 * boxSize / cellRadius)) * (((int) ((position[1] + boxWidth) / cellRadius))
-                + ((int) (2 * boxWidth / cellRadius)) * ((int) ((position[2] + boxSize) / cellRadius)));
+        return ((int)((position[0] + boxSize) / cellRadius)) + 
+                ((int)(2 * boxSize / cellRadius)) * (((int)((position[1] + boxWidth) / cellRadius)) + 
+                ((int)(2 * boxWidth / cellRadius)) * ((int)((position[2] + boxSize) / cellRadius)));
     }
 
     private void printAverageVelocity() {
         float[] vel = new float[]{0f, 0f, 0f};
-        for(float[] velocity : velocities) {
+        for(float[] velocity : newVelocities) {
             for(int i = 0; i < VEC_SIZE; ++i) {
                 vel[i] += velocity[i];
             }

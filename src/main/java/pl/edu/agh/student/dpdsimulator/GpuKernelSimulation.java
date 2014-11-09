@@ -215,11 +215,11 @@ public class GpuKernelSimulation extends Simulation {
         for (int i = 0; i < VECTOR_SIZE; ++i) {
             averageVelocityPointer.set(i, 0.0f);
         }
-
+        
         for (int i = 0; i < numberOfDroplets * VECTOR_SIZE; ++i) {
             partialSumsPointer.set(i, 0.0f);
         }
-
+        
         CLEvent fillBuffers = averageVelocity.write(queue, averageVelocityPointer, true, events);
         fillBuffers = partialSums.write(queue, partialSumsPointer, true, fillBuffers);
         CLEvent reductionEvent = dpdKernel.doVectorReduction(queue, newVelocities, partialSums,
