@@ -171,7 +171,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces,
                 newPositions, predictedVelocities, dropletParameters, types, deltaTime, numberOfDroplets, 
-                boxWidth, boxSize, new int[]{numberOfDroplets}, null, events);
+                boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewVelocities(CLEvent... events) {

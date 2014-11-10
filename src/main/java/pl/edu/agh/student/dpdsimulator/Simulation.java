@@ -14,11 +14,11 @@ public abstract class Simulation {
     
     public static final int numberOfCellNeighbours = 27;
     public static final int numberOfSteps = 100;
-    public static final int numberOfDroplets = 200000;
+    public static final int numberOfDroplets = 100000;
     public static final float deltaTime = 1.0f;
     
-    public static final float boxSize = 4f;
-    public static final float boxWidth = boxSize * 4;
+    public static final float boxSize = 10f;
+    public static final float boxWidth = boxSize * 2;
     public static final float radiusIn = 0.8f * boxSize;
     
     public static final float temperature = 310.0f;
