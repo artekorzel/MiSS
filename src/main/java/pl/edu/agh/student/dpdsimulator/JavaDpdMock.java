@@ -1,6 +1,5 @@
 package pl.edu.agh.student.dpdsimulator;
 
-import com.nativelibs4java.opencl.CLEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
