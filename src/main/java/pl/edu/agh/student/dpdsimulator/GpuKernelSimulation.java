@@ -74,6 +74,9 @@ public class GpuKernelSimulation extends Simulation {
 
         dpdKernel = new Dpd(context);
 
+        if(!shouldStoreFiles) {
+            return;
+        }
         directoryName = "../results_" + new Date().getTime();
         File directory = new File(directoryName);
         if (!directory.exists()) {
@@ -193,6 +196,9 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private void writePositionsFile(CLBuffer<Float> buffer, CLEvent... events) {
+        if(!shouldStoreFiles) {
+            return;
+        }
         File resultFile = new File(directoryName, "result" + step + ".csv");
         try (FileWriter writer = new FileWriter(resultFile)) {
             Pointer<Float> out = buffer.read(queue, events);
