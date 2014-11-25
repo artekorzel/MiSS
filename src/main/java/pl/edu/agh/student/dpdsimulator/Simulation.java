@@ -13,13 +13,16 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 100;
-    public static final int numberOfDroplets = 100000;
+    public static final int numberOfSteps = 1;    
     public static final float deltaTime = 1.0f;
     
-    public static final float boxSize = 10f;
-    public static final float boxWidth = boxSize * 2;
-    public static final float radiusIn = 0.8f * boxSize;
+    public static final float initBoxSize = 10f;
+    public static final float initBoxWidth = initBoxSize;
+    public static final float baseRadiusIn = 0.8f * initBoxSize;
+    
+    public static float boxSize;
+    public static float boxWidth;
+    public static float radiusIn;
     
     public static final float temperature = 310.0f;
     public static final float boltzmanConstant = 1f / temperature / 500f;
@@ -44,10 +47,14 @@ public abstract class Simulation {
     public static final float plasmaMass = 1f;
     
     public static final float cellRadius = 0.8f;
-    public static final int numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxWidth / cellRadius / cellRadius / cellRadius);
-    public static final int maxDropletsPerCell = (numberOfDroplets / numberOfCells) * 5 + 1;
+    public static final int baseNumberOfCells = (int) Math.ceil(8 * initBoxSize * initBoxSize * initBoxWidth / cellRadius / cellRadius / cellRadius);
+    public static final int baseNumberOfDroplets = baseNumberOfCells * 4;
+    
+    public static int numberOfCells;
+    public static int numberOfDroplets;
+    public static final int maxDropletsPerCell = (baseNumberOfDroplets / baseNumberOfCells) * 5 + 1;
         
-    public abstract void initData() throws IOException;
+    public abstract void initData(float boxSize, float boxWidth, int numberOfDroplets) throws IOException;
     
     public abstract void performSimulation();
 

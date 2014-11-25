@@ -42,11 +42,19 @@ public class GpuKernelSimulation extends Simulation {
     private Pointer<Float> averageVelocityPointer;
     
     @Override
-    public void initData() throws IOException {
+    public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
         context = JavaCL.createBestContext();
         queue = context.createDefaultQueue();
 
-        random = new Random();
+        random = new Random();        
+        
+        float sizeScale = numberOfDropletsParam / baseNumberOfDroplets;
+        numberOfDroplets = numberOfDropletsParam;
+        boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale);
+        boxWidth = boxWidthScale * boxSize / boxSizeScale;
+        radiusIn = boxSize * 0.8f;
+        numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxWidth / cellRadius / cellRadius / cellRadius);
+        
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
                 numberOfCells * numberOfCellNeighbours);
@@ -85,7 +93,7 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     @Override
-    public void performSimulation() {
+    public void performSimulation() {                              
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();

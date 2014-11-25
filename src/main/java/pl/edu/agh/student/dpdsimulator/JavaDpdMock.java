@@ -24,7 +24,7 @@ public class JavaDpdMock extends Simulation {
     private int step;
 
     @Override
-    public void initData() throws IOException {
+    public void initData(float boxSize, float boxWidth, int numberOfDropletsParam) throws IOException {
         random = new Random();
         cells = new int[maxDropletsPerCell * numberOfCells];
         cellNeighbours = new int[numberOfCells * numberOfCellNeighbours];
@@ -76,7 +76,7 @@ public class JavaDpdMock extends Simulation {
     }
     
     private void initPositionsAndVelocities() {
-        generateTube(positions, types, states, numberOfDroplets, radiusIn, boxSize, boxWidth);
+        generateTube(positions, types, states, numberOfDroplets, radiusIn, boxSize, initBoxWidth);
         generateRandomVector(velocities, states, types, thermalVelocity, flowVelocity, numberOfDroplets);
     }
     
@@ -232,9 +232,9 @@ public class JavaDpdMock extends Simulation {
     }
 
     static float[] normalizePosition(float[] vector) {
-        float[] factor = new float[]{boxSize, boxWidth, boxSize};
-        float[] factor1 = new float[]{2f * boxSize, 2f * boxWidth, 2f * boxSize};
-        float[] factor2 = new float[]{-boxSize, -boxWidth, -boxSize};
+        float[] factor = new float[]{boxSize, initBoxWidth, boxSize};
+        float[] factor1 = new float[]{2f * boxSize, 2f * initBoxWidth, 2f * boxSize};
+        float[] factor2 = new float[]{-boxSize, -initBoxWidth, -boxSize};
         return add(fmod(add(fmod(add(vector, factor), factor1), factor1), factor1), factor2);
     }
 
@@ -325,7 +325,7 @@ public class JavaDpdMock extends Simulation {
     public static void fillCellNeighbours(int[] cellNeighbours) {
         for(int cellId = 0; cellId < numberOfCells; ++cellId) {
             int numberOfCellsPerXZDim = (int) Math.ceil(2 * boxSize / cellRadius);
-            int numberOfCellsPerYDim = (int) Math.ceil(2 * boxWidth / cellRadius);
+            int numberOfCellsPerYDim = (int) Math.ceil(2 * initBoxWidth / cellRadius);
             int squareOfNumberOfCellsPerDim = numberOfCellsPerXZDim * numberOfCellsPerYDim;
 
             int cellIdPartX = cellId % numberOfCellsPerXZDim;
@@ -545,8 +545,8 @@ public class JavaDpdMock extends Simulation {
 
     public static int calculateCellId(float[] position) {
         return ((int)((position[0] + boxSize) / cellRadius)) + 
-                ((int)(2 * boxSize / cellRadius)) * (((int)((position[1] + boxWidth) / cellRadius)) + 
-                ((int)(2 * boxWidth / cellRadius)) * ((int)((position[2] + boxSize) / cellRadius)));
+                ((int)(2 * boxSize / cellRadius)) * (((int)((position[1] + initBoxWidth) / cellRadius)) + 
+                ((int)(2 * initBoxWidth / cellRadius)) * ((int)((position[2] + boxSize) / cellRadius)));
     }
 
     private void printAverageVelocity() {
