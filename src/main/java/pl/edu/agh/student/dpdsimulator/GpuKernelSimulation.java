@@ -10,13 +10,17 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import org.bridj.Pointer;
 import static pl.edu.agh.student.dpdsimulator.Simulation.*;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public class GpuKernelSimulation extends Simulation {
+    
+    private static final String SEPARATOR = ",";
     
     private String directoryName;
     private int step;
@@ -48,11 +52,12 @@ public class GpuKernelSimulation extends Simulation {
 
         random = new Random();        
         
-        float sizeScale = numberOfDropletsParam / baseNumberOfDroplets;
+        float sizeScale = numberOfDropletsParam / (float)baseNumberOfDroplets;
         numberOfDroplets = numberOfDropletsParam;
-        boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale);
+        boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
         radiusIn = boxSize * 0.8f;
+        System.out.println("" + boxSize + ", " + boxWidth);
         numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxWidth / cellRadius / cellRadius / cellRadius);
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
@@ -110,6 +115,7 @@ public class GpuKernelSimulation extends Simulation {
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);
+        countSpecial(positions, velocities);
     }
     
     private CLEvent initSimulationData() {
@@ -213,9 +219,9 @@ public class GpuKernelSimulation extends Simulation {
             Pointer<Integer> typesOut = types.read(queue, events);
             writer.write("x, y, z, t\n");
             for (int i = 0; i < numberOfDroplets; i++) {
-                writer.write(out.get(i * VECTOR_SIZE) + ","
-                        + out.get(i * VECTOR_SIZE + 1) + ","
-                        + out.get(i * VECTOR_SIZE + 2) + ","
+                writer.write(out.get(i * VECTOR_SIZE) + SEPARATOR
+                        + out.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                        + out.get(i * VECTOR_SIZE + 2) + SEPARATOR
                         + typesOut.get(i) + "\n");
             }
             out.release();
@@ -223,6 +229,46 @@ public class GpuKernelSimulation extends Simulation {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+        final double sliceSize = 0.5;
+        Pointer<Float> positionsPointer = positions.read(queue, events);
+        Set[] buckets = new Set[(int)(2 * boxSize / sliceSize) + 1];
+        for(int i = 0; i < buckets.length; ++i) {
+            buckets[i] = new HashSet();
+        }
+        
+        for (int i = 0; i < numberOfDroplets; i++) {
+            float x = positionsPointer.get(i * VECTOR_SIZE);
+            float y = positionsPointer.get(i * VECTOR_SIZE + 1);
+            float z = positionsPointer.get(i * VECTOR_SIZE + 2);
+            if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
+                buckets[(int)((z + boxSize)/sliceSize)].add(i);
+            }
+        }
+        
+        Pointer<Float> velocitiesPointer = velocities.read(queue, events);
+        float[] meanVels = new float[buckets.length];
+        for(int i = 0; i < buckets.length; ++i) {
+            float velSum = 0f;
+            for(Object v : buckets[i]) {
+                int index = (Integer) v;
+                velSum += velocitiesPointer.get(index * VECTOR_SIZE + 1);
+            }
+            if(buckets[i].isEmpty()) {
+                meanVels[i] = 0;
+            } else {
+                meanVels[i] = velSum / buckets[i].size();
+            }
+        }
+        
+        for(int i = 0; i < buckets.length; ++i) {
+            System.out.println(i + " " + meanVels[i]);
+        }
+                
+        positionsPointer.release();
+        velocitiesPointer.release();
     }
 
     private void printAverageVelocity(CLEvent... events) {
