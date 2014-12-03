@@ -103,13 +103,13 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                         float weightRValue = weightR(distanceValue, cutoffRadius);
                         float weightDValue = weightRValue * weightRValue;
 
-                        conservativeForce -= sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
+                        conservativeForce += sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
                                 * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                        dissipativeForce += sqrt(gamma * neighbourParameter.gamma) * weightDValue * normalizedPositionVector
+                        dissipativeForce -= sqrt(gamma * neighbourParameter.gamma) * weightDValue * normalizedPositionVector
                                 * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
 
-                        randomForce -= sigma * weightRValue * normalizedPositionVector
+                        randomForce += sqrt(sigma * neighbourParameter.sigma) * weightRValue * normalizedPositionVector
                                 * gaussianRandom(dropletId, neighbourId, step);
                     }
                 }
@@ -406,30 +406,34 @@ kernel void generateRandomVector(global float3* vector, global int* states, glob
     vector[dropletId] = ((float3) (x, y, z));
 }
 
-kernel void doVectorReduction(global float3* data, global float3* partialSums, 
-        global float3* output, int dataLength) {
+kernel void calculateAvgVelocityAndEnergy(global float3* velocities, global float3* avgVelocityPartialSums, 
+        global float3* avgVelocity, global float* energyPartialSums, global float* energy, 
+        int numberOfDroplets) {
 
-    int global_id = get_global_id(0);
-    int group_size = get_global_size(0);
+    int globalId = get_global_id(0);
+    if (globalId >= numberOfDroplets) {
+        return;
+    }    
 
-    if(global_id < dataLength) {
-        partialSums[global_id] = data[global_id];
-    } else {
-        partialSums[global_id] = 0;
-    }
+    
+    avgVelocityPartialSums[globalId] = velocities[globalId];
+    float velocityValue = length(velocities[globalId]);
+    energyPartialSums[globalId] = velocityValue * velocityValue;
     
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     
     int offset;
-    for(offset = group_size/2; offset > 0; offset >>= 1) {
-        if(global_id < offset){
-            partialSums[global_id] += partialSums[global_id + offset];
+    for(offset = numberOfDroplets/2; offset > 0; offset >>= 1) {
+        if(globalId < offset){
+            avgVelocityPartialSums[globalId] += avgVelocityPartialSums[globalId + offset];
+            energyPartialSums[globalId] += energyPartialSums[globalId + offset];
         }
         
         barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     }
     
-    if(global_id == 0) {
-        output[0] = partialSums[0]/dataLength;
+    if(globalId == 0) {
+        avgVelocity[0] = avgVelocityPartialSums[0]/numberOfDroplets;
+        energy[0] = energyPartialSums[0]/numberOfDroplets;
     }
 }

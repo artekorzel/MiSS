@@ -13,8 +13,8 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 100;    
-    public static final float deltaTime = 1.0f;
+    public static final int numberOfSteps = 1000;    
+    public static final float deltaTime = 0.1f;
     
     public static final float initBoxSize = 10f;
     public static final float initBoxWidth = initBoxSize;
@@ -25,11 +25,10 @@ public abstract class Simulation {
     public static float radiusIn;
     
     public static final float temperature = 310.0f;
-    public static final float boltzmanConstant = 1f / temperature / 500f;
+    public static final float boltzmanConstant = 1f / temperature;
     
     public static final float lambda = 0.63f;
     public static final float sigma = 0.075f;
-    public static final float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
     
     public static final float flowVelocity = 0.05f;
     public static final float thermalVelocity = 0.0036f;
@@ -60,16 +59,16 @@ public abstract class Simulation {
 
     protected List<Dpd.DropletParameter> createDropletParameters() {
         List<Dpd.DropletParameter> parameters = Arrays.asList(
-            createParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma, gamma),
-            createParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma, gamma),
-            createParameter(plasmaCutoffRadius, plasmaMass, plasmaDensity, lambda, sigma, gamma)
+            createParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma),
+            createParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma),
+            createParameter(plasmaCutoffRadius, plasmaMass, plasmaDensity, lambda, sigma)
         );
 
         return parameters;
     }
 
-    protected Dpd.DropletParameter createParameter(float cutoffRadius, float mass, float density,
-            float lambda, float sigma, float gamma) {
+    protected Dpd.DropletParameter createParameter(float cutoffRadius, float mass, float density, float lambda, float sigma) {
+        float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
         Dpd.DropletParameter dropletParameter = new Dpd.DropletParameter();
         dropletParameter.cutoffRadius(cutoffRadius);
         dropletParameter.mass(mass);

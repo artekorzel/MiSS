@@ -37,13 +37,17 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> predictedVelocities;
     private CLBuffer<Float> newVelocities;
     private CLBuffer<Float> forces;
-    private CLBuffer<Float> partialSums;
     private CLBuffer<Float> averageVelocity;
+    private CLBuffer<Float> averageVelocityPartialSums;
+    private CLBuffer<Float> kineticEnergy;
+    private CLBuffer<Float> kineticEnergyPartialSums;
     private CLBuffer<Integer> types;
     private CLBuffer<Integer> states;
     private CLBuffer<Dpd.DropletParameter> dropletParameters;
-    private Pointer<Float> partialSumsPointer;
     private Pointer<Float> averageVelocityPointer;
+    private Pointer<Float> averageVelocityPartialSumsPointer;
+    private Pointer<Float> kineticEnergyPointer;
+    private Pointer<Float> kineticEnergyPartialSumsPointer;
     
     @Override
     public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
@@ -75,13 +79,18 @@ public class GpuKernelSimulation extends Simulation {
                 numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        partialSums = context.createFloatBuffer(CLMem.Usage.InputOutput,
-                numberOfDroplets * VECTOR_SIZE);
-        partialSumsPointer = Pointer.allocateArray(Float.class,
-                numberOfDroplets * VECTOR_SIZE).order(context.getByteOrder());
         averageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, VECTOR_SIZE);
         averageVelocityPointer = Pointer.allocateArray(Float.class,
                 VECTOR_SIZE).order(context.getByteOrder());
+        averageVelocityPartialSums = context.createFloatBuffer(CLMem.Usage.InputOutput,
+                numberOfDroplets * VECTOR_SIZE);
+        averageVelocityPartialSumsPointer = Pointer.allocateArray(Float.class,
+                numberOfDroplets * VECTOR_SIZE).order(context.getByteOrder());
+        kineticEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
+        kineticEnergyPointer = Pointer.allocateFloat().order(context.getByteOrder());
+        kineticEnergyPartialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
+        kineticEnergyPartialSumsPointer = Pointer.allocateArray(Float.class,
+                numberOfDroplets).order(context.getByteOrder());
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
 
@@ -105,7 +114,7 @@ public class GpuKernelSimulation extends Simulation {
         writePositionsFile(positions, loopEndEvent);
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
-            System.out.println("\nStep: " + step);
+//            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
             writePositionsFile(newPositions, loopEndEvent);
@@ -275,17 +284,29 @@ public class GpuKernelSimulation extends Simulation {
         for (int i = 0; i < VECTOR_SIZE; ++i) {
             averageVelocityPointer.set(i, 0.0f);
         }
+        kineticEnergyPointer.set(0.0f);
         
         for (int i = 0; i < numberOfDroplets * VECTOR_SIZE; ++i) {
-            partialSumsPointer.set(i, 0.0f);
+            averageVelocityPartialSumsPointer.set(i, 0.0f);
+            kineticEnergyPartialSumsPointer.set(i / VECTOR_SIZE, 0.0f);
         }
         
         CLEvent fillBuffers = averageVelocity.write(queue, averageVelocityPointer, true, events);
-        fillBuffers = partialSums.write(queue, partialSumsPointer, true, fillBuffers);
-        CLEvent reductionEvent = dpdKernel.doVectorReduction(queue, newVelocities, partialSums,
-                averageVelocity, numberOfDroplets, new int[]{numberOfDroplets}, null, fillBuffers);
-        Pointer<Float> out = averageVelocity.read(queue, reductionEvent);
-        System.out.println("avgVel = (" + out.get(0) + ", " + out.get(1) + ", " + out.get(2) + ")");
-        out.release();
+        fillBuffers = averageVelocityPartialSums.write(queue, averageVelocityPartialSumsPointer, true, fillBuffers);
+        fillBuffers = kineticEnergy.write(queue, kineticEnergyPointer, true, fillBuffers);
+        fillBuffers = kineticEnergyPartialSums.write(queue, kineticEnergyPartialSumsPointer, true, fillBuffers);
+        CLEvent reductionEvent = dpdKernel.calculateAvgVelocityAndEnergy(queue, newVelocities, 
+                averageVelocityPartialSums, averageVelocity, kineticEnergyPartialSums, kineticEnergy, 
+                numberOfDroplets, new int[]{numberOfDroplets}, null, fillBuffers);
+        Pointer<Float> avgVelocityOut = averageVelocity.read(queue, reductionEvent);
+        Pointer<Float> kineticEnergyOut = kineticEnergy.read(queue, reductionEvent);
+        System.out.println(/*"avgVel = (" + 
+                avgVelocityOut.get(0) + ", " + 
+                avgVelocityOut.get(1) + ", " + 
+                avgVelocityOut.get(2) + "); en_k = " +*/
+                kineticEnergyOut.get(0)                
+        );
+        avgVelocityOut.release();
+        kineticEnergyOut.release();
     }
 }
