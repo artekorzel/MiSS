@@ -62,7 +62,7 @@ public class GpuKernelSimulation extends Simulation {
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
         radiusIn = boxSize * 0.8f;
         System.out.println("" + boxSize + ", " + boxWidth);
-        numberOfCells = (int) Math.ceil(8 * boxSize * boxSize * boxWidth / cellRadius / cellRadius / cellRadius);
+        numberOfCells = (int) ((int) Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
@@ -111,8 +111,7 @@ public class GpuKernelSimulation extends Simulation {
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
-        writePositionsFile(positions, loopEndEvent);
-        WriteOutNeighbours();
+        writePositionsFile(positions, loopEndEvent);        
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
@@ -309,13 +308,5 @@ public class GpuKernelSimulation extends Simulation {
         );
         avgVelocityOut.release();
         kineticEnergyOut.release();
-    }
-
-    private void WriteOutNeighbours() {
-        Pointer<Integer> out = cellNeighbours.read(queue, null);  
-        System.out.println(numberOfCells);        
-        for(int j = 0; j < 27; j++){
-            System.out.println("\t" + out.get(j));
-        }        
-    }
+    }    
 }

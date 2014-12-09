@@ -46,7 +46,7 @@ public abstract class Simulation {
     public static final float plasmaMass = 1f;
     
     public static final float cellRadius = 0.8f;
-    public static final int baseNumberOfCells = (int) Math.ceil(8 * initBoxSize * initBoxSize * initBoxWidth / cellRadius / cellRadius / cellRadius);
+    public static final int baseNumberOfCells = (int) ((int) Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
     public static final int baseNumberOfDroplets = baseNumberOfCells * 4;
     
     public static int numberOfCells;
