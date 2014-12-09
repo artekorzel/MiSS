@@ -212,7 +212,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         if(cellIdPartX > 0) {
             cellNeighbours[cellIndex++] = cellId + numberOfCellsPerXZDim - 1;
         } else {
-            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - 1;
+            cellNeighbours[cellIndex++] = cellId + 2 * numberOfCellsPerXZDim - 1;
         }
 
         if(cellIdPartX < numberOfCellsPerXZDim - 1) {
@@ -226,13 +226,13 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         if(cellIdPartX > 0) {
             cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim - 1;
         } else {
-            cellNeighbours[cellIndex++] = cellId - 1;
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
         }
 
         if(cellIdPartX < numberOfCellsPerXZDim - 1) {
             cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim + 1;
         } else {
-            cellNeighbours[cellIndex++] = cellId - 2 * numberOfCellsPerXZDim + 1;
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerYDim) * numberOfCellsPerXZDim + 1;
         }
     }
     
@@ -266,18 +266,18 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
                 cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 2 * numberOfCellsPerXZDim + 1;
             }
         } else {
-            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim;
-
+            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 2 * numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - numberOfCellsPerXZDim + 1;
             }
         }
 
@@ -296,92 +296,92 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
                 cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
             }
         } else {
-            cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
-
+            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
+                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim) * numberOfCellsPerXZDim + 1;
             }
         }
     } else {
-        cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim;
+        cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim;
         
         if(cellIdPartX > 0) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 1;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 1;
         } else {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
         }
 
         if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 1;
         } else {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
         }
 
         if(cellIdPartY > 0) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim - 2 * numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 2 * numberOfCellsPerXZDim + 1;
             }
         } else {
-            cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim;
-
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 2 * numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - numberOfCellsPerXZDim + 1;
             }
         }
 
         if(cellIdPartY < numberOfCellsPerYDim - 1) {
-            cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
 
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 1;
             }
         } else {
-            cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
-
+            cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
             if(cellIdPartX > 0) {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim - 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
-                cellNeighbours[cellIndex++] = cellId - 2 * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim + 1;
             } else {
-                cellNeighbours[cellIndex++] = cellId - squareOfNumberOfCellsPerDim + 1;
+                cellNeighbours[cellIndex++] = cellId + (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim) * numberOfCellsPerXZDim + 1;
             }
         }
     }
@@ -391,10 +391,14 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         
         if(cellIdPartX > 0) {
             cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - 1;
+        } else {
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
         }
 
         if(cellIdPartX < numberOfCellsPerXZDim - 1) {
             cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + 1;
+        } else {
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
         }
 
         if(cellIdPartY > 0) {
@@ -402,10 +406,28 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
 
             if(cellIdPartX > 0) {
                 cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                 cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - 2 * numberOfCellsPerXZDim + 1;
+            }
+        } else {
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - numberOfCellsPerXZDim + 1;
             }
         }
 
@@ -414,10 +436,102 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
 
             if(cellIdPartX > 0) {
                 cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
             }
 
             if(cellIdPartX < numberOfCellsPerXZDim - 1) {
                 cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim + 1;
+            }
+        } else {
+            cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId + squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim) * numberOfCellsPerXZDim + 1;
+            }
+        }
+    } else {
+        cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim;
+        
+        if(cellIdPartX > 0) {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 1;
+        } else {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+        }
+
+        if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 1;
+        } else {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
+        }
+
+        if(cellIdPartY > 0) {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim;
+
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - 2 * numberOfCellsPerXZDim + 1;
+            }
+        } else {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim - numberOfCellsPerXZDim + 1;
+            }
+        }
+
+        if(cellIdPartY < numberOfCellsPerYDim - 1) {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim;
+
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 2 * numberOfCellsPerXZDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim + 1;
+            }
+        } else {
+            cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim;
+        
+            if(cellIdPartX > 0) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim - 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) * numberOfCellsPerXZDim + numberOfCellsPerXZDim - 1;
+            }
+
+            if(cellIdPartX < numberOfCellsPerXZDim - 1) {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim - 1) *  numberOfCellsPerXZDim + 1;
+            } else {
+                cellNeighbours[cellIndex++] = cellId - (numberOfCellsPerXZDim -1) * squareOfNumberOfCellsPerDim - (numberOfCellsPerYDim) * numberOfCellsPerXZDim + 1;
             }
         }
     }

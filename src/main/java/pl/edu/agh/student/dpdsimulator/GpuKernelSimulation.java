@@ -112,6 +112,7 @@ public class GpuKernelSimulation extends Simulation {
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
         writePositionsFile(positions, loopEndEvent);
+        WriteOutNeighbours();
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
@@ -123,7 +124,7 @@ public class GpuKernelSimulation extends Simulation {
         }
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
-        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
         countSpecial(positions, velocities);
     }
     
@@ -308,5 +309,13 @@ public class GpuKernelSimulation extends Simulation {
         );
         avgVelocityOut.release();
         kineticEnergyOut.release();
+    }
+
+    private void WriteOutNeighbours() {
+        Pointer<Integer> out = cellNeighbours.read(queue, null);  
+        System.out.println(numberOfCells);        
+        for(int j = 0; j < 27; j++){
+            System.out.println("\t" + out.get(j));
+        }        
     }
 }
