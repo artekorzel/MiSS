@@ -62,7 +62,7 @@ public class GpuKernelSimulation extends Simulation {
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
         radiusIn = boxSize * 0.8f;
         System.out.println("" + boxSize + ", " + boxWidth);
-        numberOfCells = (int) ((int) Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
+        numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
@@ -241,7 +241,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
-        final double sliceSize = 0.5;
+        final double sliceSize = boxSize / 10;
         Pointer<Float> positionsPointer = positions.read(queue, events);
         Set[] buckets = new Set[(int)(2 * boxSize / sliceSize) + 1];
         for(int i = 0; i < buckets.length; ++i) {
@@ -273,7 +273,7 @@ public class GpuKernelSimulation extends Simulation {
         }
         
         for(int i = 0; i < buckets.length; ++i) {
-            System.out.println(i + " " + meanVels[i]);
+            System.out.println(meanVels[i]);
         }
                 
         positionsPointer.release();

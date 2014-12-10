@@ -107,7 +107,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                                 * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
                         dissipativeForce -= sqrt(gamma * neighbourParameter.gamma) * weightDValue * normalizedPositionVector
-                                * dot(normalizedPositionVector, velocities[neighbourId] - dropletVelocity);
+                                * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
 
                         randomForce += sqrt(sigma * neighbourParameter.sigma) * weightRValue * normalizedPositionVector
                                 * gaussianRandom(dropletId, neighbourId, step);
@@ -120,7 +120,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     if(dropletType == 0 || step > 100) {
         return conservativeForce + dissipativeForce + randomForce;
     } else {
-        return conservativeForce + dissipativeForce + randomForce + (float3)(0.0f, 0.001f, 0.0f);    
+        return conservativeForce + dissipativeForce + randomForce + (float3)(0.0f, 0.01f, 0.0f);    
     }
 }
 

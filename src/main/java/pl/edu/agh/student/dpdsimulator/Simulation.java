@@ -13,7 +13,7 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 10;    
+    public static final int numberOfSteps = 200;    
     public static final float deltaTime = 0.1f;
     
     public static final float initBoxSize = 10f;
@@ -25,7 +25,7 @@ public abstract class Simulation {
     public static float radiusIn;
     
     public static final float temperature = 310.0f;
-    public static final float boltzmanConstant = 1f / temperature;
+    public static final float boltzmanConstant = 1f / temperature / 100;
     
     public static final float lambda = 0.63f;
     public static final float sigma = 0.075f;
@@ -46,7 +46,7 @@ public abstract class Simulation {
     public static final float plasmaMass = 1f;
     
     public static final float cellRadius = 0.8f;
-    public static final int baseNumberOfCells = (int) ((int) Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
+    public static final int baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
     public static final int baseNumberOfDroplets = baseNumberOfCells * 4;
     
     public static int numberOfCells;
