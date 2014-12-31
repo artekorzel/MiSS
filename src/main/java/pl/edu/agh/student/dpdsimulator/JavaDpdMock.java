@@ -20,7 +20,7 @@ public class JavaDpdMock extends Simulation {
     private float[][] forces;
     private int[] types;
     private int[] states;
-    private Dpd.DropletParameter[] dropletParameters;
+    private Dpd.Parameters[] parameters;
     private int step;
 
     @Override
@@ -65,8 +65,8 @@ public class JavaDpdMock extends Simulation {
     }
 
     private void initDropletParameters() {
-        List<Dpd.DropletParameter> parameters = super.createDropletParameters();
-        dropletParameters = parameters.toArray(new Dpd.DropletParameter[parameters.size()]);
+        List<Dpd.Parameters> params = super.createParameters();
+        parameters = params.toArray(new Dpd.Parameters[params.size()]);
     }
 
     private void initStates(){
@@ -145,7 +145,7 @@ public class JavaDpdMock extends Simulation {
     
     private void calculateForces() {
         for(int dropletId = 0; dropletId < numberOfDroplets * numberOfCellNeighbours; ++dropletId) {
-            calculateForces(positions, velocities, forces, dropletParameters, types, cells, cellNeighbours, step, dropletId);
+            calculateForces(positions, velocities, forces, parameters, types, cells, cellNeighbours, step, dropletId);
         }
     }
 
@@ -158,7 +158,7 @@ public class JavaDpdMock extends Simulation {
 
     private void calculateNewVelocities() {
         for(int dropletId = 0; dropletId < numberOfDroplets * numberOfCellNeighbours; ++dropletId) {
-            calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, dropletParameters, 
+            calculateNewVelocities(newPositions, velocities, predictedVelocities, newVelocities, forces, parameters, 
                     types, cells, cellNeighbours, step, dropletId);
         }
     }
@@ -246,7 +246,7 @@ public class JavaDpdMock extends Simulation {
         return vec;
     }
     
-    public static float[] calculateForce(float[][] positions, float[][] velocities, Dpd.DropletParameter[] params,
+    public static float[] calculateForce(float[][] positions, float[][] velocities, Dpd.Parameters[] params,
         int[] types, int[] cells, int[] cellNeighbours, int dropletId, int dropletCellNeighbourId, int step) {
 
         float[] conservativeForce = new float[]{0.0f, 0.0f, 0.0f};
@@ -257,12 +257,6 @@ public class JavaDpdMock extends Simulation {
         float[] dropletVelocity = velocities[dropletId];
 
         int dropletType = types[dropletId];
-        Dpd.DropletParameter dropletParameter = params[dropletType];
-
-        float repulsionParameter = dropletParameter.repulsionParameter();
-        float gamma = dropletParameter.gamma();
-        float sigma = dropletParameter.sigma();
-
         int dropletCellId = calculateCellId(dropletPosition);
 
         int cellId = cellNeighbours[dropletCellId * numberOfCellNeighbours + dropletCellNeighbourId];
@@ -274,17 +268,21 @@ public class JavaDpdMock extends Simulation {
                 float distanceValue = distance(neighbourPosition, dropletPosition);
 
                 int neighbourType = types[neighbourId];
-                Dpd.DropletParameter neighbourParameter = params[neighbourType];
-                float cutoffRadius = neighbourParameter.cutoffRadius();
+                Dpd.PairParameters parameters = params[0].pairs().get(dropletType * 3 + neighbourType);
+                float cutoffRadius = parameters.cutoffRadius();
 
                 if(distanceValue < cutoffRadius) {
+                    float repulsionParameter = parameters.repulsionParameter();
+                    float gamma = parameters.gamma();
+                    float sigma = parameters.sigma();
+                    
                     float[] normalizedPositionVector = normalize(neighbourPosition, dropletPosition);
                     if(dropletType != 0 || neighbourType != 0) {
                         float weightRValue = weightR(distanceValue, cutoffRadius);
                         float weightDValue = weightRValue * weightRValue;
 
                         for(int k = 0; k < VEC_SIZE; ++k) {
-                            conservativeForce[k] -= Math.sqrt(repulsionParameter * neighbourParameter.repulsionParameter())
+                            conservativeForce[k] -= repulsionParameter
                                     * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector[k];
 
                             dissipativeForce[k] += gamma * weightDValue * normalizedPositionVector[k]
@@ -446,7 +444,7 @@ public class JavaDpdMock extends Simulation {
     }
         
     public static void calculateForces(float[][] positions, float[][] velocities, float[][] forces,
-            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
+            Dpd.Parameters[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
         
         int dropletId = fullDropletId / numberOfCellNeighbours;
         if (dropletId >= numberOfDroplets) {
@@ -489,7 +487,7 @@ public class JavaDpdMock extends Simulation {
     
     public static void calculateNewVelocities(float[][] newPositions, float[][] velocities,
             float[][] predictedVelocities, float[][] newVelocities, float[][] forces,
-            Dpd.DropletParameter[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
+            Dpd.Parameters[] params, int[] types, int[] cells, int[] cellNeighbours, int step, int fullDropletId) {
         
         int dropletId = fullDropletId / numberOfCellNeighbours;
         if (dropletId >= numberOfDroplets) {

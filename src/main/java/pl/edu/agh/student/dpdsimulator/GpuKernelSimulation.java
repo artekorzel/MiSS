@@ -43,7 +43,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> kineticEnergyPartialSums;
     private CLBuffer<Integer> types;
     private CLBuffer<Integer> states;
-    private CLBuffer<Dpd.DropletParameter> dropletParameters;
+    private CLBuffer<Dpd.Parameters> parameters;
     private Pointer<Float> averageVelocityPointer;
     private Pointer<Float> averageVelocityPartialSumsPointer;
     private Pointer<Float> kineticEnergyPointer;
@@ -136,15 +136,15 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     private void initDropletParameters() {
-        List<Dpd.DropletParameter> parameters = super.createDropletParameters();
-        long size = parameters.size();
-        Pointer<Dpd.DropletParameter> valuesPointer
-                = Pointer.allocateArray(Dpd.DropletParameter.class, size).order(context.getByteOrder());
+        List<Dpd.Parameters> params = super.createParameters();
+        long size = params.size();
+        Pointer<Dpd.Parameters> valuesPointer
+                = Pointer.allocateArray(Dpd.Parameters.class, size).order(context.getByteOrder());
         for (int i = 0; i < size; i++) {
-            valuesPointer.set(i, parameters.get(i));
+            valuesPointer.set(i, params.get(i));
         }
 
-        dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
+        parameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
     }
 
     private void initStates() {
@@ -185,7 +185,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, dropletParameters, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, types,
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
                 numberOfCells, step, new int[]{numberOfDroplets * numberOfCellNeighbours},
                 new int[]{numberOfCellNeighbours}, events);
@@ -193,13 +193,13 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces,
-                newPositions, predictedVelocities, dropletParameters, types, deltaTime, numberOfDroplets, 
+                newPositions, predictedVelocities, parameters, types, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewVelocities(CLEvent... events) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities,
-                newVelocities, forces, dropletParameters, types, cells, cellNeighbours, deltaTime, 
+                newVelocities, forces, parameters, types, cells, cellNeighbours, deltaTime, 
                 cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, numberOfCells, step, 
                 new int[]{numberOfDroplets * numberOfCellNeighbours}, new int[]{numberOfCellNeighbours}, events);
     }

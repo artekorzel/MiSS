@@ -1,11 +1,19 @@
-typedef struct DropletParameter {
-    float cutoffRadius;
+typedef struct DropletParameters {
     float mass;
-    float repulsionParameter;
     float lambda;
+} DropletParameters;
+
+typedef struct PairParameters {
+    float cutoffRadius;
+    float repulsionParameter;
     float sigma;
     float gamma;
-} DropletParameter;
+} PairParameters;
+
+typedef struct Parameters {
+    DropletParameters droplets[3];
+    PairParameters pairs[3][3];
+} Parameters;
 
 float weightR(float distanceValue, float cutoffRadius) {
     if(distanceValue > cutoffRadius) {
@@ -62,7 +70,7 @@ int calculateCellId(float3 position, float cellRadius, float boxSize, float boxW
                     ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
 }
 
-float3 calculateForce(global float3* positions, global float3* velocities, global DropletParameter* params,
+float3 calculateForce(global float3* positions, global float3* velocities, global Parameters* params,
         global int* types, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
         float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int dropletCellNeighbourId, 
         int step) {
@@ -75,14 +83,11 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float3 dropletVelocity = velocities[dropletId];
     
     int dropletType = types[dropletId];
-    DropletParameter dropletParameter = params[dropletType];
-    
-    float repulsionParameter = dropletParameter.repulsionParameter;
-    float gamma = dropletParameter.gamma;
-    float sigma = dropletParameter.sigma;
     
     int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize, boxWidth);
     global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 27];
+    
+    Parameters parameters = params[0];
     
     int i, j, neighbourId;
     int cellId = dropletCellNeighbours[dropletCellNeighbourId];
@@ -94,22 +99,26 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                 float distanceValue = distance(neighbourPosition, dropletPosition);
 
                 int neighbourType = types[neighbourId];
-                DropletParameter neighbourParameter = params[neighbourType];
-                float cutoffRadius = neighbourParameter.cutoffRadius;
+                PairParameters pairParameters = parameters.pairs[dropletType][neighbourType];
+                float cutoffRadius = pairParameters.cutoffRadius;
 
                 if(distanceValue < cutoffRadius) {
+                    float repulsionParameter = pairParameters.repulsionParameter;
+                    float gamma = pairParameters.gamma;
+                    float sigma = pairParameters.sigma;
+                    
                     float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
                     if(dropletType != 0 || neighbourType != 0) {
                         float weightRValue = weightR(distanceValue, cutoffRadius);
                         float weightDValue = weightRValue * weightRValue;
 
-                        conservativeForce += sqrt(repulsionParameter * neighbourParameter.repulsionParameter)
+                        conservativeForce += repulsionParameter
                                 * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                        dissipativeForce -= sqrt(gamma * neighbourParameter.gamma) * weightDValue * normalizedPositionVector
+                        dissipativeForce -= gamma * weightDValue * normalizedPositionVector
                                 * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
 
-                        randomForce += sqrt(sigma * neighbourParameter.sigma) * weightRValue * normalizedPositionVector
+                        randomForce += sigma * weightRValue * normalizedPositionVector
                                 * gaussianRandom(dropletId, neighbourId, step);
                     }
                 }
@@ -542,7 +551,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
-        global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
+        global Parameters* params, global int* types, global int* cells, global int* cellNeighbours, 
         float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, int maxDropletsPerCell, 
         int numberOfCells, int step) {
 
@@ -571,7 +580,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
 
 kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
         global float3* forces, global float3* newPositions, global float3* predictedVelocities,
-        global DropletParameter* params, global int* types, float deltaTime, int numberOfDroplets, 
+        global Parameters* params, global int* types, float deltaTime, int numberOfDroplets, 
         float boxSize, float boxWidth) {
 
     int dropletId = get_global_id(0);
@@ -579,7 +588,7 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
         return;
     }
     
-    DropletParameter dropletParameter = params[types[dropletId]];
+    DropletParameters dropletParameter = params[0].droplets[types[dropletId]];
     float3 dropletVelocity = velocities[dropletId];
     float3 dropletForce = forces[dropletId];
     float dropletMass = dropletParameter.mass;
@@ -595,7 +604,7 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
 
 kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
         global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
-        global DropletParameter* params, global int* types, global int* cells, global int* cellNeighbours, 
+        global Parameters* params, global int* types, global int* cells, global int* cellNeighbours, 
         float deltaTime, float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, 
         int maxDropletsPerCell, int numberOfCells, int step) {
 
@@ -618,7 +627,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
             predictedForce += localForces[i];
         }
         newVelocities[dropletId] = velocities[dropletId] + 0.5f * deltaTime 
-                * (forces[dropletId] + predictedForce) / params[types[dropletId]].mass;
+                * (forces[dropletId] + predictedForce) / params[0].droplets[types[dropletId]].mass;
     }
 }
 

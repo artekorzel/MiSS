@@ -3,6 +3,7 @@ package pl.edu.agh.student.dpdsimulator;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public abstract class Simulation {
@@ -57,28 +58,45 @@ public abstract class Simulation {
     
     public abstract void performSimulation();
 
-    protected List<Dpd.DropletParameter> createDropletParameters() {
-        List<Dpd.DropletParameter> parameters = Arrays.asList(
-            createParameter(vesselCutoffRadius, vesselMass, vesselDensity, lambda, sigma),
-            createParameter(bloodCutoffRadius, bloodCellMass, bloodDensity, lambda, sigma),
-            createParameter(plasmaCutoffRadius, plasmaMass, plasmaDensity, lambda, sigma)
-        );
+    protected List<Dpd.Parameters> createParameters() {
+        Dpd.Parameters parameters = new Dpd.Parameters();
+        Pointer<Dpd.DropletParameters> droplets = parameters.droplets();
+        droplets.set(0, createDropletParameter(vesselMass, lambda));
+        droplets.set(1, createDropletParameter(bloodCellMass, lambda));
+        droplets.set(2, createDropletParameter(plasmaMass, lambda));
+        
+        Pointer<Dpd.PairParameters> pairs = parameters.pairs();
+        pairs.set(0, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
+        
+        pairs.set(4, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
 
-        return parameters;
+        pairs.set(8, createPairParameter(plasmaCutoffRadius, plasmaDensity, sigma));
+
+        pairs.set(1, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
+        pairs.set(3, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
+        
+        pairs.set(2, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
+        pairs.set(6, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
+        
+        pairs.set(5, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
+        pairs.set(7, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
+        
+        return Arrays.asList(parameters);
     }
 
-    protected Dpd.DropletParameter createParameter(float cutoffRadius, float mass, float density, float lambda, float sigma) {
-        float gamma = sigma * sigma / 2.0f / boltzmanConstant / temperature;
-        Dpd.DropletParameter dropletParameter = new Dpd.DropletParameter();
-        dropletParameter.cutoffRadius(cutoffRadius);
+    protected Dpd.DropletParameters createDropletParameter(float mass, float lambda) {
+        Dpd.DropletParameters dropletParameter = new Dpd.DropletParameters();
         dropletParameter.mass(mass);
-
-        float repulsionParameter = 75.0f * boltzmanConstant * temperature / density;
-        dropletParameter.repulsionParameter(repulsionParameter);
         dropletParameter.lambda(lambda);
-        dropletParameter.sigma(sigma);
-        dropletParameter.gamma(gamma);
-
         return dropletParameter;
+    }
+    
+    protected Dpd.PairParameters createPairParameter(float cutoffRadius, float density, float sigma) {
+        Dpd.PairParameters pairParameter = new Dpd.PairParameters();
+        pairParameter.cutoffRadius(cutoffRadius);
+        pairParameter.repulsionParameter(75.0f * boltzmanConstant * temperature / density);
+        pairParameter.sigma(sigma);
+        pairParameter.gamma(sigma * sigma / 2.0f / boltzmanConstant / temperature);
+        return pairParameter;        
     }
 }
