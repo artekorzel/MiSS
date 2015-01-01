@@ -14,7 +14,7 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 200;    
+    public static final int numberOfSteps = 1000;    
     public static final float deltaTime = 0.1f;
     
     public static final float initBoxSize = 10f;
@@ -25,11 +25,11 @@ public abstract class Simulation {
     public static float boxWidth;
     public static float radiusIn;
     
-    public static final float temperature = 310.0f;
-    public static final float boltzmanConstant = 1f / temperature / 100;
+//    public static final float temperature = 310.0f;
+//    public static final float boltzmanConstant = 1f / temperature;
     
     public static final float lambda = 0.63f;
-    public static final float sigma = 0.075f;
+//    public static final float sigma = 0.075f;
     
     public static final float flowVelocity = 0.05f;
     public static final float thermalVelocity = 0.0036f;
@@ -38,9 +38,9 @@ public abstract class Simulation {
     public static final float bloodCutoffRadius = 0.4f;
     public static final float plasmaCutoffRadius = 0.4f;
     
-    public static final float vesselDensity = 10000.0f;
-    public static final float bloodDensity = 50000.0f;
-    public static final float plasmaDensity = 50000.0f;
+//    public static final float vesselDensity = 10000.0f;
+//    public static final float bloodDensity = 50000.0f;
+//    public static final float plasmaDensity = 50000.0f;
     
     public static final float vesselMass = 1000f;
     public static final float bloodCellMass = 1.14f;
@@ -66,21 +66,53 @@ public abstract class Simulation {
         droplets.set(2, createDropletParameter(plasmaMass, lambda));
         
         Pointer<Dpd.PairParameters> pairs = parameters.pairs();
-        pairs.set(0, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
         
-        pairs.set(4, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
+        Dpd.PairParameters vesselVessel = createPairParameter(
+                vesselCutoffRadius, 
+                0.0075f,//calculateRepulsionParameter(vesselDensity), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+        
+        Dpd.PairParameters bloodBlood = createPairParameter(
+                bloodCutoffRadius, 
+                0.0015f,//calculateRepulsionParameter(bloodDensity), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+        
+        Dpd.PairParameters plasmaPlasma = createPairParameter(
+                plasmaCutoffRadius, 
+                0.0015f,//calculateRepulsionParameter(plasmaDensity), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+        
+        Dpd.PairParameters vesselBlood = createPairParameter(
+                vesselCutoffRadius, 
+                0.0035f,//(float) Math.sqrt(calculateRepulsionParameter(vesselDensity) * calculateRepulsionParameter(bloodDensity)), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+        
+        Dpd.PairParameters vesselPlasma = createPairParameter(
+                vesselCutoffRadius, 
+                0.0035f,//(float) Math.sqrt(calculateRepulsionParameter(vesselDensity) * calculateRepulsionParameter(plasmaDensity)), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+        
+        Dpd.PairParameters bloodPlasma = createPairParameter(
+                bloodCutoffRadius, 
+                0.0075f,//(float) Math.sqrt(calculateRepulsionParameter(bloodDensity) * calculateRepulsionParameter(plasmaDensity)), 
+                0.075f,//sigma, 
+                0.0028125f);//calculateGamma(sigma));
+                        
+        pairs.set(0, vesselVessel);        
+        pairs.set(1, vesselBlood);
+        pairs.set(2, vesselPlasma);
+        pairs.set(3, vesselBlood);
+        pairs.set(4, bloodBlood);
+        pairs.set(5, bloodPlasma);
+        pairs.set(6, vesselPlasma);
+        pairs.set(7, bloodPlasma);
+        pairs.set(8, plasmaPlasma);
 
-        pairs.set(8, createPairParameter(plasmaCutoffRadius, plasmaDensity, sigma));
-
-        pairs.set(1, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
-        pairs.set(3, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
-        
-        pairs.set(2, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
-        pairs.set(6, createPairParameter(vesselCutoffRadius, vesselDensity, sigma));
-        
-        pairs.set(5, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
-        pairs.set(7, createPairParameter(bloodCutoffRadius, bloodDensity, sigma));
-        
         return Arrays.asList(parameters);
     }
 
@@ -91,12 +123,20 @@ public abstract class Simulation {
         return dropletParameter;
     }
     
-    protected Dpd.PairParameters createPairParameter(float cutoffRadius, float density, float sigma) {
+    protected Dpd.PairParameters createPairParameter(float cutoffRadius, float repulsionParameter, float sigma, float gamma) {
         Dpd.PairParameters pairParameter = new Dpd.PairParameters();
         pairParameter.cutoffRadius(cutoffRadius);
-        pairParameter.repulsionParameter(75.0f * boltzmanConstant * temperature / density);
+        pairParameter.repulsionParameter(repulsionParameter);
         pairParameter.sigma(sigma);
-        pairParameter.gamma(sigma * sigma / 2.0f / boltzmanConstant / temperature);
+        pairParameter.gamma(gamma);
         return pairParameter;        
     }
+    
+//    private float calculateRepulsionParameter(float density) {
+//        return 75.0f * boltzmanConstant * temperature / density;
+//    }
+//    
+//    private float calculateGamma(float sigma) {
+//        return sigma * sigma / 2.0f / boltzmanConstant / temperature;
+//    }
 }
