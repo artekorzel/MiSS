@@ -272,7 +272,7 @@ public class JavaDpdMock extends Simulation {
                 float cutoffRadius = parameters.cutoffRadius();
 
                 if(distanceValue < cutoffRadius) {
-                    float repulsionParameter = parameters.repulsionParameter();
+                    float repulsionParameter = parameters.pi();
                     float gamma = parameters.gamma();
                     float sigma = parameters.sigma();
                     
