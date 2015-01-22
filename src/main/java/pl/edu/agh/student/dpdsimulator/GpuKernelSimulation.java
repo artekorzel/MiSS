@@ -262,7 +262,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
-        final double sliceSize = boxSize / 10;
+        final double sliceSize = cellRadius;
         Pointer<Float> positionsPointer = positions.read(queue, events);
         Set[] buckets = new Set[(int)(2 * boxSize / sliceSize) + 1];
         for(int i = 0; i < buckets.length; ++i) {
@@ -273,9 +273,9 @@ public class GpuKernelSimulation extends Simulation {
             float x = positionsPointer.get(i * VECTOR_SIZE);
             float y = positionsPointer.get(i * VECTOR_SIZE + 1);
             float z = positionsPointer.get(i * VECTOR_SIZE + 2);
-            if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
+            //if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
                 buckets[(int)((z + boxSize)/sliceSize)].add(i);
-            }
+            //}
         }
         
         Pointer<Float> velocitiesPointer = velocities.read(queue, events);

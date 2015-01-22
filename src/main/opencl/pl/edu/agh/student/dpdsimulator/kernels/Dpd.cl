@@ -108,7 +108,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     float sigma = pairParameters.sigma;
                     
                     float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
-                    if(dropletType != 0 || neighbourType != 0) {
+                    //if(dropletType != 0 || neighbourType != 0) {
                         float weightRValue = weightR(distanceValue, cutoffRadius);
                         float weightDValue = weightRValue * weightRValue;
                         
@@ -122,22 +122,23 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
                         conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
 
-                        dissipativeForce -= gamma * weightDValue * normalizedPositionVector
+                        /*dissipativeForce -= gamma * weightDValue * normalizedPositionVector
                                 * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
 
                         randomForce += sigma * weightRValue * normalizedPositionVector
                                 * gaussianRandom(dropletId, neighbourId, step);
-                    }
+                    }*/
                 }
             }
         }
     }
     
-    if(dropletType == 0 || step > 100) {
+    /*if(dropletType == 0 || step > 100) {
         return conservativeForce + dissipativeForce + randomForce;
     } else {
         return conservativeForce + dissipativeForce + randomForce + (float3)(0.0f, 0.01f, 0.0f);    
-    }
+    }*/
+    return conservativeForce;
 }
 
 kernel void fillCells(global int* cells, global float3* positions, float cellRadius, 
@@ -653,7 +654,7 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     float z = (rand(&seed, 1) * 2 - 1) * boxSize;
     
     float distanceFromY = sqrt(x * x + z * z);
-    if (distanceFromY >= radiusIn) {
+    /*if (distanceFromY >= radiusIn) {
         types[dropletId] = 0;
     } else {
         float randomNum = rand(&seed, 1);
@@ -662,7 +663,8 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
         } else {
             types[dropletId] = 2;
         }        
-    }
+    }*/
+    types[dropletId] = 2;
         
     states[dropletId] = seed;
     vector[dropletId] = (float3) (x, y, z);
@@ -677,7 +679,7 @@ kernel void generateRandomVector(global float3* vector, global int* states, glob
     }
     float x, y, z;
     int seed = states[dropletId];
-    if(types[dropletId] == 0){
+    /*if(types[dropletId] == 0){
         x = 0.0f;
         y = 0.0f;
         z = 0.0f;
@@ -685,9 +687,9 @@ kernel void generateRandomVector(global float3* vector, global int* states, glob
         x = (rand(&seed, 1) * 2 - 1) * thermalVelocity;
         y = ((rand(&seed, 1) * 2 - 1) * flowVelocity + flowVelocity) / 2.0f;
         z = (rand(&seed, 1) * 2 - 1) * thermalVelocity;
-    }
+    }*/
     states[dropletId] = seed;
-    vector[dropletId] = ((float3) (x, y, z));
+    vector[dropletId] = ((float3) (0,0,0));
 }
 
 kernel void calculateAvgVelocityAndEnergy(global float3* velocities, global float3* avgVelocityPartialSums, 

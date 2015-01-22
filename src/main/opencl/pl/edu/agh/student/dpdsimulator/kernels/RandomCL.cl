@@ -42,3 +42,29 @@ kernel void random(global float* a, const int size) {
     int seed = id;
     a[id] = MWC64X(&seed);
 }
+
+typedef struct DropletParameters {
+    float mass;
+    float lambda;
+} DropletParameters;
+
+typedef struct PairParameters {
+    float cutoffRadius;
+    float pi;
+    float sigma;
+    float gamma;
+} PairParameters;
+
+typedef struct Parameters {
+    DropletParameters droplets[3];
+    PairParameters pairs[3][3];
+} Parameters;
+
+kernel void test(global Parameters* params, global float* out) {
+    int i, j;
+    for(i = 0; i < 3; ++i) {
+        for(j = 0; j < 3; ++j) {
+            out[i * 3 + j] = params[0].pairs[i][j].pi;
+        }
+    }
+}
