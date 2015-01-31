@@ -6,10 +6,7 @@ import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -41,14 +38,12 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> averageVelocityPartialSums;
     private CLBuffer<Float> kineticEnergy;
     private CLBuffer<Float> kineticEnergyPartialSums;
-    private CLBuffer<Integer> types;
     private CLBuffer<Integer> states;
     private CLBuffer<Dpd.Parameters> parameters;
     private Pointer<Float> averageVelocityPointer;
     private Pointer<Float> averageVelocityPartialSumsPointer;
     private Pointer<Float> kineticEnergyPointer;
     private Pointer<Float> kineticEnergyPartialSumsPointer;
-    private CLBuffer<Float> testF;
     
     @Override
     public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
@@ -92,35 +87,21 @@ public class GpuKernelSimulation extends Simulation {
         kineticEnergyPartialSums = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         kineticEnergyPartialSumsPointer = Pointer.allocateArray(Float.class,
                 numberOfDroplets).order(context.getByteOrder());
-        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         
-        testF = context.createFloatBuffer(CLMem.Usage.InputOutput, 3 * VECTOR_SIZE);
-
         dpdKernel = new Dpd(context);
-
-        if(!shouldStoreFiles) {
-            return;
-        }
-        directoryName = "../results_" + new Date().getTime();
-        File directory = new File(directoryName);
-        if (!directory.exists()) {
-            directory.mkdir();
-        }
     }
     
     @Override
     public void performSimulation() {                              
         long startTime = System.nanoTime();
         step = 0;
-        CLEvent loopEndEvent = initSimulationData();
-        writePositionsFile(positions, loopEndEvent);        
+        CLEvent loopEndEvent = initSimulationData(); 
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
-            writePositionsFile(newPositions, loopEndEvent);
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
@@ -128,24 +109,6 @@ public class GpuKernelSimulation extends Simulation {
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
         countSpecial(positions, velocities);
-        
-        Pointer<Float> testFOut = testF.read(queue);
-        System.out.println("Fc = (" + 
-                testFOut.get(0) + ", " + 
-                testFOut.get(1) + ", " + 
-                testFOut.get(2) + ")"
-        );
-        System.out.println("Fd = (" + 
-                testFOut.get(4) + ", " + 
-                testFOut.get(5) + ", " + 
-                testFOut.get(6) + ")"
-        );
-        System.out.println("Fb = (" + 
-                testFOut.get(8) + ", " + 
-                testFOut.get(9) + ", " + 
-                testFOut.get(10) + ")"
-        );
-        testFOut.release();
     }
     
     private CLEvent initSimulationData() {
@@ -179,10 +142,9 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent initPositionsAndVelocities() {
-        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
+        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions,
                 states, numberOfDroplets, radiusIn, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
-        return dpdKernel.generateRandomVector(queue, velocities, states, types, thermalVelocity,
-                flowVelocity, numberOfDroplets, new int[]{numberOfDroplets}, null, generatePositionsEvent);
+        return dpdKernel.generateRandomVector(queue, velocities, states, numberOfDroplets, new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
 
     private CLEvent fillCells(CLBuffer<Float> positions, CLEvent... events) {
@@ -206,22 +168,22 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, 
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
-                numberOfCells, step, testF, new int[]{numberOfDroplets * numberOfCellNeighbours},
+                numberOfCells, step, new int[]{numberOfDroplets * numberOfCellNeighbours},
                 new int[]{numberOfCellNeighbours}, events);
     }
 
     private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces,
-                newPositions, predictedVelocities, parameters, types, deltaTime, numberOfDroplets, 
+                newPositions, predictedVelocities, parameters, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewVelocities(CLEvent... events) {
         return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities,
-                newVelocities, forces, parameters, types, cells, cellNeighbours, deltaTime, 
-                cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, numberOfCells, step, testF, 
+                newVelocities, forces, parameters, cells, cellNeighbours, deltaTime, 
+                cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, numberOfCells, step,  
                 new int[]{numberOfDroplets * numberOfCellNeighbours}, new int[]{numberOfCellNeighbours}, events);
     }
 
@@ -237,28 +199,6 @@ public class GpuKernelSimulation extends Simulation {
         CLBuffer<Float> tmp = velocities;
         velocities = newVelocities;
         newVelocities = tmp;
-    }
-
-    private void writePositionsFile(CLBuffer<Float> buffer, CLEvent... events) {
-        if(!shouldStoreFiles) {
-            return;
-        }
-        File resultFile = new File(directoryName, "result" + step + ".csv");
-        try (FileWriter writer = new FileWriter(resultFile)) {
-            Pointer<Float> out = buffer.read(queue, events);
-            Pointer<Integer> typesOut = types.read(queue, events);
-            writer.write("x, y, z, t\n");
-            for (int i = 0; i < numberOfDroplets; i++) {
-                writer.write(out.get(i * VECTOR_SIZE) + SEPARATOR
-                        + out.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                        + out.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                        + typesOut.get(i) + "\n");
-            }
-            out.release();
-            typesOut.release();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
