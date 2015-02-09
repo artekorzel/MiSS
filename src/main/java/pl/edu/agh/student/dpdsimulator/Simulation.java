@@ -3,7 +3,6 @@ package pl.edu.agh.student.dpdsimulator;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public abstract class Simulation {
@@ -15,7 +14,7 @@ public abstract class Simulation {
     
     public static final int numberOfCellNeighbours = 27;
     public static final int numberOfSteps = 10000;    
-    public static final float deltaTime = 0.005f;
+    public static final float deltaTime = 0.01f;
     
     public static final float initBoxSize = 10f;
     public static final float initBoxWidth = initBoxSize;

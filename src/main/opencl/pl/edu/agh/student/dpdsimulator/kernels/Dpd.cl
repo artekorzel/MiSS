@@ -121,9 +121,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int cellsNoY = (int)(2 * boxWidth / cellRadius);
     float3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
     
-    int i, j, neighbourId;    
-    global int* dropletCellNeighbours = &cellNeighbours[dropletCellId * 27];
-    int cellId = dropletCellNeighbours[dropletCellNeighbourId];
+    int i, j, neighbourId;
+    int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
     global int* dropletNeighbours = &cells[maxDropletsPerCell * cellId];
     for(j = 0, neighbourId = dropletNeighbours[j]; neighbourId >= 0; neighbourId = dropletNeighbours[++j]) {
         if(neighbourId != dropletId) {
@@ -241,36 +240,15 @@ kernel void generateRandomVector(global float3* vector, global int* states, int 
     vector[dropletId] = ((float3) (0, 0, 0));
 }
 
-kernel void calculateAvgVelocityAndEnergy(global float3* velocities, global float3* avgVelocityPartialSums, 
-        global float3* avgVelocity, global float* energyPartialSums, global float* energy, 
-        int numberOfDroplets) {
+kernel void calculateVelocitiesEnergy(global float3* velocities, global float* energy, int numberOfDroplets) {
 
     int globalId = get_global_id(0);
     if (globalId >= numberOfDroplets) {
         return;
     }    
 
-    
-    avgVelocityPartialSums[globalId] = velocities[globalId];
-    float velocityValue = length(velocities[globalId]);
-    energyPartialSums[globalId] = velocityValue * velocityValue;
-    
-    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    
-    int offset;
-    for(offset = numberOfDroplets/2; offset > 0; offset >>= 1) {
-        if(globalId < offset){
-            avgVelocityPartialSums[globalId] += avgVelocityPartialSums[globalId + offset];
-            energyPartialSums[globalId] += energyPartialSums[globalId + offset];
-        }
-        
-        barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    }
-    
-    if(globalId == 0) {
-        avgVelocity[0] = avgVelocityPartialSums[0]/numberOfDroplets;
-        energy[0] = energyPartialSums[0]/numberOfDroplets;
-    }
+    float3 velocity = velocities[globalId];
+    energy[globalId] = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
 }
 
 kernel void fillCells(global int* cells, global float3* positions, float cellRadius, 
