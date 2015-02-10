@@ -18,11 +18,9 @@ public abstract class Simulation {
     
     public static final float initBoxSize = 5f;
     public static final float initBoxWidth = initBoxSize;
-    public static final float baseRadiusIn = 0.8f * initBoxSize;
     
     public static float boxSize;
     public static float boxWidth;
-    public static float radiusIn;
     
     public static final float lambda = 0.5f;    
     public static final float cutoffRadius = 0.5f;    

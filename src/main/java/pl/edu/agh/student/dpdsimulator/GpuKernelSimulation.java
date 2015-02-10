@@ -43,7 +43,7 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
-        context = JavaCL.createBestContext();
+        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
 
         random = new Random();        
@@ -52,7 +52,6 @@ public class GpuKernelSimulation extends Simulation {
         numberOfDroplets = numberOfDropletsParam;
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
-        radiusIn = boxSize * 0.8f;
         numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
         
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
@@ -131,7 +130,7 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions,
-                states, numberOfDroplets, radiusIn, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
+                states, numberOfDroplets, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
         return dpdKernel.generateRandomVector(queue, velocities, states, numberOfDroplets, new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
 
@@ -238,7 +237,8 @@ public class GpuKernelSimulation extends Simulation {
                 numberOfDroplets, new int[]{numberOfDroplets}, null, events);
         Pointer<Float> kineticEnergySum = sumator.reduce(queue, velocitiesEnergy, reductionEvent);
         float ek = kineticEnergySum.get(0) / numberOfDroplets;
-        System.out.println(/*"avgVel = (" + 
+        System.out.println(
+                /*"avgVel = (" + 
                 avgVelocityX + ", " + 
                 avgVelocityY + ", " + 
                 avgVelocityZ + "); en_k = " +*/
