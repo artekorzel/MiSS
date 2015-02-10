@@ -62,43 +62,44 @@ int calculateCellId(float3 position, float cellRadius, float boxSize, float boxW
                     ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
 }
 
-float3 calculateCellCoordinates(int dropletCellId, float cellRadius, float boxSize, 
+int3 calculateCellCoordinates(int dropletCellId, float cellRadius, float boxSize, 
         float boxWidth, int cellsNoXZ, int cellsNoY) {
-    int dropletCellX = dropletCellId % (cellsNoXZ * cellsNoY) / cellsNoXZ;
-    int dropletCellY = dropletCellId % cellsNoY;
     int dropletCellZ = dropletCellId / (cellsNoXZ * cellsNoY);
-    return (float3)(dropletCellX, dropletCellY, dropletCellZ);
+    int dropletCellX = dropletCellId - dropletCellZ * cellsNoXZ * cellsNoY;
+    int dropletCellY = dropletCellX / cellsNoXZ;
+    dropletCellX = dropletCellId % cellsNoXZ;
+    return (int3)(dropletCellX, dropletCellY, dropletCellZ);
 }
 
-float3 getNeighbourPosition(global float3* positions, float3 dropletCellCoordinates, 
+float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinates, 
         float cellRadius, int dropletCellId, int neighbourCellId, int neighbourId, 
         float boxSize, float boxWidth, int cellsNoXZ, int cellsNoY) {
     float3 position = positions[neighbourId];
     
     if(neighbourCellId != dropletCellId) {
-        float3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+        int3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
 
-        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ) {
+        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ - 1) {
             position.x -= boxSize;
         }
         
-        if(dropletCellCoordinates.x == cellsNoXZ && neighbourCellCoordinates.x == 0) {
+        if(dropletCellCoordinates.x == cellsNoXZ - 1 && neighbourCellCoordinates.x == 0) {
             position.x += boxSize;
         }
         
-        if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY) {
+        if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY - 1) {
             position.y -= boxWidth;
         }
         
-        if(dropletCellCoordinates.y == cellsNoY && neighbourCellCoordinates.y == 0) {
+        if(dropletCellCoordinates.y == cellsNoY - 1 && neighbourCellCoordinates.y == 0) {
             position.y += boxWidth;
         }
         
-        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ) {
+        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ - 1) {
             position.z -= boxSize;
         }
         
-        if(dropletCellCoordinates.z == cellsNoXZ && neighbourCellCoordinates.z == 0) {
+        if(dropletCellCoordinates.z == cellsNoXZ - 1 && neighbourCellCoordinates.z == 0) {
             position.z += boxSize;
         }
     }
@@ -119,7 +120,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize, boxWidth);
     int cellsNoXZ = (int)(2 * boxSize / cellRadius);
     int cellsNoY = (int)(2 * boxWidth / cellRadius);
-    float3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+    int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
     
     int i, j, neighbourId;
     int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];

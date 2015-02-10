@@ -13,10 +13,10 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 10000;    
+    public static final int numberOfSteps = 20000;    
     public static final float deltaTime = 0.01f;
     
-    public static final float initBoxSize = 10f;
+    public static final float initBoxSize = 5f;
     public static final float initBoxWidth = initBoxSize;
     public static final float baseRadiusIn = 0.8f * initBoxSize;
     
@@ -25,10 +25,10 @@ public abstract class Simulation {
     public static float radiusIn;
     
     public static final float lambda = 0.5f;    
-    public static final float cutoffRadius = 0.8f;    
+    public static final float cutoffRadius = 0.5f;    
     public static final float mass = 1f;
     
-    public static final float cellRadius = 0.8f;
+    public static final float cellRadius = 0.5f;
     public static final int baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
     public static final int baseNumberOfDroplets = baseNumberOfCells * 4;
     
@@ -46,7 +46,7 @@ public abstract class Simulation {
         parameters.mass(mass);
         parameters.lambda(lambda);
         parameters.cutoffRadius(cutoffRadius);
-        parameters.pi(7.860920e-03f);
+        parameters.pi(1e-02f);
         return Arrays.asList(parameters);
     }
 }

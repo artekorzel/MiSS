@@ -1,10 +1,3 @@
-// created on 2014-10-12
-
-/**
- * @author Filip
- */
-
-
 float rand(int* seed, int step) {
     long const a = 16807L;
     long const m = 2147483647L;
@@ -67,4 +60,29 @@ kernel void test(global Parameters* params, global float* out) {
             out[i * 3 + j] = params[0].pairs[i][j].pi;
         }
     }
+}
+
+kernel void normalizePosition(global float3* vector, float boxSize, float boxWidth) {
+    float3 changeVector = (float3)(boxSize, boxWidth, boxSize);
+    vector[0] = fmod(fmod(vector[0] + changeVector, 2.0f * changeVector) + 2.0f * changeVector, 2.0f * changeVector) - changeVector;
+}
+
+kernel void dist(global float3* vector, global float3* vector2, global float* res) {
+    res[0] = distance(vector[0], vector2[0]);
+}
+
+kernel void calculateCellId(global int* cellNo, global float3* pos, float cellRadius, float boxSize, float boxWidth) {
+    float3 position = pos[0];
+    cellNo[0] = ((int)((position.x + boxSize) / cellRadius)) + 
+            ((int)(2 * boxSize / cellRadius)) * (((int)((position.y + boxWidth) / cellRadius)) + 
+                    ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
+}
+
+kernel void calculateCellCoordinates(global int3* res, int dropletCellId, float cellRadius, float boxSize, 
+        float boxWidth, int cellsNoXZ, int cellsNoY) {
+    int dropletCellZ = dropletCellId / (cellsNoXZ * cellsNoY);
+    int dropletCellX = dropletCellId - dropletCellZ * cellsNoXZ * cellsNoY;
+    int dropletCellY = dropletCellX / cellsNoXZ;
+    dropletCellX = dropletCellId % cellsNoXZ;
+    res[0] = (int3)(dropletCellX, dropletCellY, dropletCellZ);
 }

@@ -12,6 +12,7 @@ import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import org.bridj.Pointer;
@@ -241,7 +242,7 @@ public class GpuKernelSimulation extends Simulation {
                 avgVelocityX + ", " + 
                 avgVelocityY + ", " + 
                 avgVelocityZ + "); en_k = " +*/
-                ek
+                String.format(Locale.GERMANY, "%e", ek)
         );
 //        velocitiesSum.release();
         kineticEnergySum.release();
