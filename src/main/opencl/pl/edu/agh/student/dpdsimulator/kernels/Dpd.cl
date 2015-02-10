@@ -78,27 +78,27 @@ float3 getNeighbourPosition(global float3* positions, float3 dropletCellCoordina
     if(neighbourCellId != dropletCellId) {
         float3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
 
-        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ) {
+        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ-1) {
             position.x -= boxSize;
         }
         
-        if(dropletCellCoordinates.x == cellsNoXZ && neighbourCellCoordinates.x == 0) {
+        if(dropletCellCoordinates.x == cellsNoXZ-1 && neighbourCellCoordinates.x == 0) {
             position.x += boxSize;
         }
         
-        if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY) {
+        if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY-1) {
             position.y -= boxWidth;
         }
         
-        if(dropletCellCoordinates.y == cellsNoY && neighbourCellCoordinates.y == 0) {
+        if(dropletCellCoordinates.y == cellsNoY-1 && neighbourCellCoordinates.y == 0) {
             position.y += boxWidth;
         }
         
-        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ) {
+        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ-1) {
             position.z -= boxSize;
         }
         
-        if(dropletCellCoordinates.z == cellsNoXZ && neighbourCellCoordinates.z == 0) {
+        if(dropletCellCoordinates.z == cellsNoXZ-1 && neighbourCellCoordinates.z == 0) {
             position.z += boxSize;
         }
     }
@@ -113,6 +113,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     Parameters parameters = params[0];
+    float pi = parameters.pi;
+    float cutoffRadius = parameters.cutoffRadius;
 
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];    
@@ -130,16 +132,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
             float distanceValue = distance(neighbourPosition, dropletPosition);
 
-            float cutoffRadius = parameters.cutoffRadius;
-
             if(distanceValue < cutoffRadius) {
-                float pi = parameters.pi;
-                float gamma = parameters.gamma;
-                float sigma = parameters.sigma;
-
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
-                float weightRValue = weightR(distanceValue, cutoffRadius);
-                float weightDValue = weightRValue * weightRValue;
                 conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
             }
         }
@@ -214,7 +208,7 @@ kernel void calculateNewVelocities(global float3* newPositions, global float3* v
 }
 
 kernel void generateTube(global float3* vector, global int* states, 
-        int numberOfDroplets, float radiusIn, float boxSize, float boxWidth) {
+        int numberOfDroplets, float boxSize, float boxWidth) {
     
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
