@@ -45,18 +45,12 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
+        super.initData(boxSizeScale, boxWidthScale, numberOfDropletsParam);
+        
         context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
 
         random = new Random();        
-        
-        float sizeScale = numberOfDropletsParam / (float)baseNumberOfDroplets;
-        numberOfDroplets = numberOfDropletsParam;
-        boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
-        boxWidth = boxWidthScale * boxSize / boxSizeScale;
-        numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
-        
-        System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,

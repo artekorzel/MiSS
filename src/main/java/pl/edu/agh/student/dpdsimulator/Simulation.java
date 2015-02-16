@@ -34,7 +34,15 @@ public abstract class Simulation {
     public static int numberOfDroplets;
     public static final int maxDropletsPerCell = (baseNumberOfDroplets / baseNumberOfCells) * 5 + 1;
         
-    public abstract void initData(float boxSize, float boxWidth, int numberOfDroplets) throws IOException;
+    public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
+        float sizeScale = numberOfDropletsParam / (float)baseNumberOfDroplets;
+        numberOfDroplets = numberOfDropletsParam;
+        boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
+        boxWidth = boxWidthScale * boxSize / boxSizeScale;
+        numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
+        
+        System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells); 
+    };
     
     public abstract void performSimulation();
 
