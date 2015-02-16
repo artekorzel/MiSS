@@ -18,6 +18,7 @@ import java.util.Set;
 import org.bridj.Pointer;
 import static pl.edu.agh.student.dpdsimulator.Simulation.*;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
+import pl.edu.agh.student.dpdsimulator.kernels.HockneyCells;
 
 public class GpuKernelSimulation extends Simulation {
     
@@ -27,6 +28,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLContext context;
     private CLQueue queue;
     private Dpd dpdKernel;
+    private HockneyCells hockneyCellsKernel;
     private CLBuffer<Integer> cells;
     private CLBuffer<Integer> cellNeighbours;
     private CLBuffer<Float> positions;
@@ -77,6 +79,7 @@ public class GpuKernelSimulation extends Simulation {
         sumatorVector = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
+        hockneyCellsKernel = new HockneyCells(context);
     }
     
     @Override
@@ -140,7 +143,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent fillCellNeighbours(CLEvent... events) {
-        return dpdKernel.fillCellNeighbours(queue, cellNeighbours, cellRadius, boxSize, boxWidth,
+        return hockneyCellsKernel.fillCellNeighbours(queue, cellNeighbours, cellRadius, boxSize, boxWidth,
                 numberOfCells, new int[]{numberOfCells}, null, events);
     }
 
