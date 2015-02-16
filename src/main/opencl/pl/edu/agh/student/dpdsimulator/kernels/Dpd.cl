@@ -267,9 +267,8 @@ kernel void fillCells(global int* cells, global float3* positions, float cellRad
     }
 }
 
-kernel void fillCellNeighbours(global int* cellNeighbours, 
-        float cellRadius, float boxSize, float boxWidth, int numberOfCells,
-        int* neighboursX, int* neighboursY, int* neighboursZ) {
+kernel void fillCellNeighbours(global int* cellNeighbours,
+        float cellRadius, float boxSize, float boxWidth, int numberOfCells) {
     
     int cellId = get_global_id(0);
     if (cellId >= numberOfCells) {
@@ -286,6 +285,9 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
 
     int cellIndex = cellId * 27;
     //cellNeighbours[cellIndex++] = cellId;
+    int neighboursX[3];
+    int neighboursY[3];
+    int neighboursZ[3];
 
     neighboursX[0] = cellIdPartX;
     neighboursX[1] = (cellIdPartX + numberOfCellsPerXZDim - 1) % numberOfCellsPerXZDim;
@@ -303,11 +305,9 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         for(int j = 0; j < 3; j++){
             for(int k = 0; k < 3; k++){
                 cellNeighbours[cellIndex++] = neighboursX[i] + neighboursY[j] * numberOfCellsPerXZDim + neighboursZ[k] * squareOfNumberOfCellsPerDim;
+                //cellNeighbours[cellIndex++] = neighboursX[i] * 100 + neighboursY[j] * 10 + neighboursZ[k];
+                //cellNeighbours[cellIndex++] = cellIdPartX * 100 + cellIdPartY * 10 + cellIdPartZ;
             }
         }
-    }
-
-    for(int n = (cellId + 1) * 27; cellIndex < n; ++cellIndex) {
-        cellNeighbours[cellIndex] = -1;
     }
 }

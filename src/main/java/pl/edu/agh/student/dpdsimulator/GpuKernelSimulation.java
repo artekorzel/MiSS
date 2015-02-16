@@ -29,9 +29,6 @@ public class GpuKernelSimulation extends Simulation {
     private Dpd dpdKernel;
     private CLBuffer<Integer> cells;
     private CLBuffer<Integer> cellNeighbours;
-    private CLBuffer<Integer> neighboursX;
-    private CLBuffer<Integer> neighboursY;
-    private CLBuffer<Integer> neighboursZ;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
     private CLBuffer<Float> velocities;
@@ -62,9 +59,6 @@ public class GpuKernelSimulation extends Simulation {
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
                 numberOfCells * numberOfCellNeighbours);
-        neighboursX = context.createIntBuffer(CLMem.Usage.InputOutput, 3);
-        neighboursY = context.createIntBuffer(CLMem.Usage.InputOutput, 3);
-        neighboursZ = context.createIntBuffer(CLMem.Usage.InputOutput, 3);
         positions = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput,
@@ -92,7 +86,7 @@ public class GpuKernelSimulation extends Simulation {
         CLEvent loopEndEvent = initSimulationData(); 
         WriteOutNeighbours();
         long endInitTime = System.nanoTime();
-        for (step = 1; step <= numberOfSteps; ++step) {
+       /* for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
@@ -102,7 +96,7 @@ public class GpuKernelSimulation extends Simulation {
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
-        countSpecial(positions, velocities);
+        countSpecial(positions, velocities);*/
     }
     
     private CLEvent initSimulationData() {
@@ -148,7 +142,7 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent fillCellNeighbours(CLEvent... events) {
         return dpdKernel.fillCellNeighbours(queue, cellNeighbours, cellRadius, boxSize, boxWidth,
-                numberOfCells, neighboursX, neighboursY, neighboursZ, new int[]{numberOfCells}, null, events);
+                numberOfCells, new int[]{numberOfCells}, null, events);
     }
 
     private CLEvent performSingleStep(CLEvent... events) {
@@ -257,9 +251,12 @@ public class GpuKernelSimulation extends Simulation {
     
     private void WriteOutNeighbours() {
         Pointer<Integer> out = cellNeighbours.read(queue, null);  
-        System.out.println(numberOfCells);        
-        for(int j = 0; j < 27; j++){
-            System.out.println("\t" + out.get(j));
-        }        
+        System.out.println(numberOfCells);      
+        for(int i = 0; i < 1; i++){
+            System.out.println(i);
+            for(int j = 0; j < 27; j++){
+                System.out.println("\t" + out.get(i*27 + j));
+            }        
+        }
     }
 }
