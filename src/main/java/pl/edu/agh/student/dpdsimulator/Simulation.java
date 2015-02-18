@@ -13,8 +13,8 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 20000;    
-    public static final float deltaTime = 0.01f;
+    public static final int numberOfSteps = 10000;    
+    public static final float deltaTime = 0.02f;
     
     public static final float initBoxSize = 5f;
     public static final float initBoxWidth = initBoxSize;

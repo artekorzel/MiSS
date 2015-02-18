@@ -86,3 +86,7 @@ kernel void calculateCellCoordinates(global int3* res, int dropletCellId, float 
     dropletCellX = dropletCellId % cellsNoXZ;
     res[0] = (int3)(dropletCellX, dropletCellY, dropletCellZ);
 }
+
+kernel void test2(global float* a) {
+    a[0] = (-5) % 5;
+}

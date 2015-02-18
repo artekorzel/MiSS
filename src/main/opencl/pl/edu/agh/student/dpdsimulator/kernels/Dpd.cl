@@ -31,12 +31,16 @@ int calculateHash(int d1, int d2) {
     return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
-// <0; 1>
+// <0; 1)
 float rand(int* seed, int step) {
     long const a = 16807L;
     long const m = 2147483647L;
     *seed = (*seed * a * step) % m;
-    return (float)(*seed) / m;
+    float randomValue = (float)(*seed) / m;
+    if(randomValue < 0) {
+        return -randomValue;
+    }
+    return randomValue;
 }
 
 // <-1; 1>
@@ -51,8 +55,8 @@ float normalRand(float U1, float U2) {
 // <-1; 1>
 float gaussianRandom(int dropletId, int neighbourId, int step) {
     int seed = calculateHash(dropletId, neighbourId);
-    float U1 = (rand(&seed, step) + 1.0) / 2;
-    float U2 = (rand(&seed, step) + 1.0) / 2;
+    float U1 = rand(&seed, step);
+    float U2 = rand(&seed, step);
     return normalRand(U1, U2);
 }
 
@@ -110,7 +114,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
 float3 calculateForce(global float3* positions, global float3* velocities, global Parameters* params,
         global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
         float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int dropletCellNeighbourId, 
-        int step) {
+        int step, local int* noOfNeighbours) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     Parameters parameters = params[0];
@@ -127,6 +131,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int i, j, neighbourId;
     int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
     global int* dropletNeighbours = &cells[maxDropletsPerCell * cellId];
+    noOfNeighbours = 0;
     for(j = 0, neighbourId = dropletNeighbours[j]; neighbourId >= 0; neighbourId = dropletNeighbours[++j]) {
         if(neighbourId != dropletId) {
             float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, 
@@ -136,10 +141,12 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
             if(distanceValue < cutoffRadius) {
                 float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
                 conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
+                noOfNeighbours++;
             }
         }
     }
     
+    noOfNeighbours[dropletCellNeighbourId] = noOfNeighbours;
     return conservativeForce;
 }
 
@@ -156,18 +163,21 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     int dropletCellNeighbourId = get_global_id(0) % 27;
 
     local float3 localForces[27];
+    local int localNoOfNeighbours[27];
     localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params,
             cells, cellNeighbours, cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, 
-            dropletId, dropletCellNeighbourId, step);
+            dropletId, dropletCellNeighbourId, step, localNoOfNeighbours);
     
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     
     if(dropletCellNeighbourId == 0) {
         float3 force = localForces[0];
+        int noOfNei = localNoOfNeighbours[0];
         for(int i = 1; i < 27; ++i) {
             force += localForces[i];
+            noOfNei += localNoOfNeighbours[i];
         }
-        forces[dropletId] = force;
+        forces[dropletId] = force / (noOfNei + 1);
     }
 }
 
@@ -284,7 +294,7 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
     int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
     int cellIndex = cellId * 27;
-    //cellNeighbours[cellIndex++] = cellId;
+    
     int neighboursX[3];
     int neighboursY[3];
     int neighboursZ[3];
@@ -305,8 +315,6 @@ kernel void fillCellNeighbours(global int* cellNeighbours,
         for(int j = 0; j < 3; j++){
             for(int k = 0; k < 3; k++){
                 cellNeighbours[cellIndex++] = neighboursX[i] + neighboursY[j] * numberOfCellsPerXZDim + neighboursZ[k] * squareOfNumberOfCellsPerDim;
-                //cellNeighbours[cellIndex++] = neighboursX[i] * 100 + neighboursY[j] * 10 + neighboursZ[k];
-                //cellNeighbours[cellIndex++] = cellIdPartX * 100 + cellIdPartY * 10 + cellIdPartZ;
             }
         }
     }

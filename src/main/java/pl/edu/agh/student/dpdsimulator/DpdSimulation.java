@@ -4,7 +4,7 @@ public class DpdSimulation {
     
     static float boxSizeScale = 1f;
     static float boxWidthScale = 1f;
-    static int numberOfDroplets = Simulation.baseNumberOfDroplets / 64;
+    static int numberOfDroplets = Simulation.baseNumberOfDroplets / 8;
     
     public static void main(String[] args) {
         try {

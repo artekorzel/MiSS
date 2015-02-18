@@ -83,10 +83,9 @@ public class GpuKernelSimulation extends Simulation {
     public void performSimulation() {                              
         long startTime = System.nanoTime();
         step = 0;
-        CLEvent loopEndEvent = initSimulationData(); 
-        WriteOutNeighbours();
+        CLEvent loopEndEvent = initSimulationData();
         long endInitTime = System.nanoTime();
-       /* for (step = 1; step <= numberOfSteps; ++step) {
+        for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
@@ -96,7 +95,7 @@ public class GpuKernelSimulation extends Simulation {
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
-        countSpecial(positions, velocities);*/
+        countSpecial(positions, velocities);
     }
     
     private CLEvent initSimulationData() {
@@ -123,7 +122,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> statesPointer
                 = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
         for (int i = 0; i < numberOfDroplets; i++) {
-            statesPointer.set(i, random.nextInt(Integer.MAX_VALUE));
+            statesPointer.set(i, random.nextInt());
         }
 
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
@@ -132,7 +131,8 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions,
                 states, numberOfDroplets, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
-        return dpdKernel.generateRandomVector(queue, velocities, states, numberOfDroplets, new int[]{numberOfDroplets}, null, generatePositionsEvent);
+        return dpdKernel.generateRandomVector(queue, velocities, states, numberOfDroplets, 
+                new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
 
     private CLEvent fillCells(CLBuffer<Float> positions, CLEvent... events) {
@@ -192,7 +192,7 @@ public class GpuKernelSimulation extends Simulation {
     private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
         final double sliceSize = cellRadius;
         Pointer<Float> positionsPointer = positions.read(queue, events);
-        Set[] buckets = new Set[(int)(2 * boxSize / sliceSize) + 1];
+        Set[] buckets = new Set[(int)Math.ceil(2 * boxSize / sliceSize)];
         for(int i = 0; i < buckets.length; ++i) {
             buckets[i] = new HashSet();
         }
@@ -247,16 +247,5 @@ public class GpuKernelSimulation extends Simulation {
         );
 //        velocitiesSum.release();
         kineticEnergySum.release();
-    }    
-    
-    private void WriteOutNeighbours() {
-        Pointer<Integer> out = cellNeighbours.read(queue, null);  
-        System.out.println(numberOfCells);      
-        for(int i = 0; i < 1; i++){
-            System.out.println(i);
-            for(int j = 0; j < 27; j++){
-                System.out.println("\t" + out.get(i*27 + j));
-            }        
-        }
     }
 }

@@ -19,21 +19,11 @@ public class RandomSimulation {
                 
         RandomCL kernel = new RandomCL(context);
                 
-        CLBuffer<Integer> res = context.createIntBuffer(CLMem.Usage.InputOutput, 1);
-        Pointer<Float> aaaP = Pointer.allocateFloats(4).order(context.getByteOrder());
-        aaaP.set(0, -0.4f);
-        aaaP.set(1, -0.1f);
-        aaaP.set(2, 0.26f);
-        CLBuffer<Float> aaa = context.createFloatBuffer(CLMem.Usage.InputOutput, aaaP);
+        CLBuffer<Float> res = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
         
-        CLEvent evt = kernel.calculateCellId(queue, res, aaa, 0.5f, 0.75f, 1.0f, new int[]{1}, null);
-        final int cellId = res.read(queue, evt).getInt();
+        CLEvent evt = kernel.test2(queue, res, new int[]{1}, null);
+        float value = res.read(queue, evt).getFloat();
         
-        System.out.println(cellId);
-                
-        res = context.createIntBuffer(CLMem.Usage.InputOutput, 3);
-        
-        evt = kernel.calculateCellCoordinates(queue, res, cellId, 0.5f, 0.75f, 1.0f, 3, 4, new int[]{1}, null);
-        System.out.println(Arrays.toString(res.read(queue, evt).getInts()));
+        System.out.println(value);
     }
 }
