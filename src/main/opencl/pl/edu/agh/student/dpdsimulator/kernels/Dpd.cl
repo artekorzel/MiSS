@@ -113,8 +113,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
 
 float3 calculateForce(global float3* positions, global float3* velocities, global Parameters* params,
         global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
-        float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int dropletCellNeighbourId, 
-        int step, local int* noOfNeighbours) {
+        float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     Parameters parameters = params[0];
@@ -128,63 +127,43 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int cellsNoY = (int)(2 * boxWidth / cellRadius);
     int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
     
-    int i, j, neighbourId;
-    int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
-    global int* dropletNeighbours = &cells[maxDropletsPerCell * cellId];
-    noOfNeighbours = 0;
-    for(j = 0, neighbourId = dropletNeighbours[j]; neighbourId >= 0; neighbourId = dropletNeighbours[++j]) {
-        if(neighbourId != dropletId) {
-            float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, 
-                    cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
-            float distanceValue = distance(neighbourPosition, dropletPosition);
+    int j, neighbourId, dropletCellNeighbourId;
+    for(dropletCellNeighbourId = 0; dropletCellNeighbourId < 27; ++dropletCellNeighbourId) {
+        int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
+        global int* dropletNeighbours = &cells[maxDropletsPerCell * cellId];
+        for(j = 0, neighbourId = dropletNeighbours[j]; neighbourId >= 0; neighbourId = dropletNeighbours[++j]) {
+            if(neighbourId != dropletId) {
+                float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, 
+                        cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+                float distanceValue = distance(neighbourPosition, dropletPosition);
 
-            if(distanceValue < cutoffRadius) {
-                float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
-                conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
-                noOfNeighbours++;
+                if(distanceValue < cutoffRadius) {
+                    float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
+                    conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
+                }
             }
         }
     }
     
-    noOfNeighbours[dropletCellNeighbourId] = noOfNeighbours;
     return conservativeForce;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
-        global Parameters* params, global int* cells, global int* cellNeighbours, 
-        float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, int maxDropletsPerCell, 
-        int numberOfCells, int step) {
+        global Parameters* params, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
+        float boxWidth, int numberOfDroplets, int maxDropletsPerCell, int numberOfCells, int step) {
 
-    int dropletId = get_global_id(0) / 27;
+    int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
-    
-    int dropletCellNeighbourId = get_global_id(0) % 27;
 
-    local float3 localForces[27];
-    local int localNoOfNeighbours[27];
-    localForces[dropletCellNeighbourId] = calculateForce(positions, velocities, params,
-            cells, cellNeighbours, cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, 
-            dropletId, dropletCellNeighbourId, step, localNoOfNeighbours);
-    
-    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    
-    if(dropletCellNeighbourId == 0) {
-        float3 force = localForces[0];
-        int noOfNei = localNoOfNeighbours[0];
-        for(int i = 1; i < 27; ++i) {
-            force += localForces[i];
-            noOfNei += localNoOfNeighbours[i];
-        }
-        forces[dropletId] = force / (noOfNei + 1);
-    }
+    forces[dropletId] = calculateForce(positions, velocities, params, cells, cellNeighbours, 
+            cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, dropletId, step);
 }
 
-kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions, global float3* velocities,
-        global float3* forces, global float3* newPositions, global float3* predictedVelocities,
-        global Parameters* params, float deltaTime, int numberOfDroplets, 
-        float boxSize, float boxWidth) {
+kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
+        global float3* forces, global float3* newPositions, global float3* newVelocities,
+        global Parameters* params, float deltaTime, int numberOfDroplets, float boxSize, float boxWidth) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -197,25 +176,8 @@ kernel void calculateNewPositionsAndPredictedVelocities(global float3* positions
 
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;            
     newPositions[dropletId] = normalizePosition(newPosition, boxSize, boxWidth);
-}
-
-kernel void calculateNewVelocities(global float3* newPositions, global float3* velocities,
-        global float3* predictedVelocities, global float3* newVelocities, global float3* forces,
-        global Parameters* params, global int* cells, global int* cellNeighbours, 
-        float deltaTime, float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, 
-        int maxDropletsPerCell, int numberOfCells, int step) {
-
-    int dropletId = get_global_id(0) / 27;
-    if (dropletId >= numberOfDroplets) {
-        return;
-    }
     
-    int dropletCellNeighbourId = get_global_id(0) % 27;
-
-    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    if(dropletCellNeighbourId == 0) {
-        newVelocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / params[0].mass;
-    }
+    newVelocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / params[0].mass;
 }
 
 kernel void generateTube(global float3* vector, global int* states, 

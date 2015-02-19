@@ -32,7 +32,6 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> positions;
     private CLBuffer<Float> newPositions;
     private CLBuffer<Float> velocities;
-    private CLBuffer<Float> predictedVelocities;
     private CLBuffer<Float> newVelocities;
     private CLBuffer<Float> forces;
     private CLBuffer<Integer> states;
@@ -64,8 +63,6 @@ public class GpuKernelSimulation extends Simulation {
         newPositions = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         velocities = context.createFloatBuffer(CLMem.Usage.InputOutput,
-                numberOfDroplets * VECTOR_SIZE);
-        predictedVelocities = context.createFloatBuffer(CLMem.Usage.Input,
                 numberOfDroplets * VECTOR_SIZE);
         newVelocities = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
@@ -147,32 +144,21 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent performSingleStep(CLEvent... events) {
         CLEvent forcesEvent = calculateForces(events);
-        CLEvent newPositionsAndPredictedVelocitiesEvent
-                = calculateNewPositionsAndPredictedVelocities(forcesEvent);
-        CLEvent cellsEvent = fillCells(newPositions, newPositionsAndPredictedVelocitiesEvent);
-        CLEvent newVelocitiesEvent = calculateNewVelocities(cellsEvent);
-        CLEvent.waitFor(newVelocitiesEvent);
-        return newVelocitiesEvent;
+        CLEvent newPositionsAndVelocitiesEvent = calculateNewPositionsAndVelocities(forcesEvent);
+        CLEvent cellsEvent = fillCells(newPositions, newPositionsAndVelocitiesEvent);
+        return cellsEvent;
     }
 
     private CLEvent calculateForces(CLEvent... events) {
         return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, 
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
-                numberOfCells, step, new int[]{numberOfDroplets * numberOfCellNeighbours},
-                new int[]{numberOfCellNeighbours}, events);
+                numberOfCells, step, new int[]{numberOfDroplets}, null, events);
     }
 
-    private CLEvent calculateNewPositionsAndPredictedVelocities(CLEvent... events) {
-        return dpdKernel.calculateNewPositionsAndPredictedVelocities(queue, positions, velocities, forces,
-                newPositions, predictedVelocities, parameters, deltaTime, numberOfDroplets, 
+    private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
+        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces,
+                newPositions, newVelocities, parameters, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
-    }
-
-    private CLEvent calculateNewVelocities(CLEvent... events) {
-        return dpdKernel.calculateNewVelocities(queue, newPositions, velocities, predictedVelocities,
-                newVelocities, forces, parameters, cells, cellNeighbours, deltaTime, 
-                cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, numberOfCells, step,  
-                new int[]{numberOfDroplets * numberOfCellNeighbours}, new int[]{numberOfCellNeighbours}, events);
     }
 
     private void swapPositions(CLEvent... events) {
