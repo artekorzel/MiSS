@@ -9,7 +9,10 @@ import com.nativelibs4java.opencl.JavaCL;
 import com.nativelibs4java.opencl.util.OpenCLType;
 import com.nativelibs4java.opencl.util.ReductionUtils;
 import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +23,10 @@ import static pl.edu.agh.student.dpdsimulator.Simulation.*;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public class GpuKernelSimulation extends Simulation {
+    
+    private static final String SEPARATOR = ",";
+    
+    private String directoryName;
     
     private int step;
     private Random random;
@@ -74,6 +81,15 @@ public class GpuKernelSimulation extends Simulation {
         sumatorVector = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
+
+        if(!shouldStoreFiles) {
+            return;
+        }
+        directoryName = "../results_" + new Date().getTime();
+        File directory = new File(directoryName);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
     }
     
     @Override
@@ -81,11 +97,13 @@ public class GpuKernelSimulation extends Simulation {
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
+        writePositionsFile(positions, loopEndEvent);    
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
+            writePositionsFile(newPositions, loopEndEvent);
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
@@ -233,5 +251,24 @@ public class GpuKernelSimulation extends Simulation {
         );
 //        velocitiesSum.release();
         kineticEnergySum.release();
+    }
+
+    private void writePositionsFile(CLBuffer<Float> buffer, CLEvent... events) {
+        if(!shouldStoreFiles) {
+            return;
+        }
+        File resultFile = new File(directoryName, "result" + step + ".csv");
+        try (FileWriter writer = new FileWriter(resultFile)) {
+            Pointer<Float> out = buffer.read(queue, events);
+            writer.write("x, y, z\n");
+            for (int i = 0; i < numberOfDroplets; i++) {
+                writer.write(out.get(i * VECTOR_SIZE) + SEPARATOR
+                        + out.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                        + out.get(i * VECTOR_SIZE + 2) + "\n");
+            }
+            out.release();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

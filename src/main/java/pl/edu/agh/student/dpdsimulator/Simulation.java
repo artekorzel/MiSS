@@ -13,7 +13,7 @@ public abstract class Simulation {
     public static final boolean shouldStoreFiles = false;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 10000;    
+    public static final int numberOfSteps = 1000;    
     public static final float deltaTime = 0.02f;
     
     public static final float initBoxSize = 5f;
@@ -45,6 +45,8 @@ public abstract class Simulation {
         parameters.lambda(lambda);
         parameters.cutoffRadius(cutoffRadius);
         parameters.pi(1e-02f);
+        parameters.gamma(0f);
+        parameters.sigma(0f);
         return Arrays.asList(parameters);
     }
 }

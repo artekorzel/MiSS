@@ -116,8 +116,13 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int step) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
+    float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
+    float3 randomForce = (float3)(0.0, 0.0, 0.0);
+    
     Parameters parameters = params[0];
     float pi = parameters.pi;
+    float gamma = parameters.gamma;
+    float sigma = parameters.sigma;
     float cutoffRadius = parameters.cutoffRadius;
 
     float3 dropletPosition = positions[dropletId];
@@ -139,13 +144,22 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
                 if(distanceValue < cutoffRadius) {
                     float3 normalizedPositionVector = normalize(neighbourPosition - dropletPosition);
+                    float weightRValue = weightR(distanceValue, cutoffRadius);
+                    float weightDValue = weightRValue * weightRValue;
+                    
                     conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
+                    
+                    dissipativeForce -= gamma * weightDValue * normalizedPositionVector
+                            * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
+
+                    randomForce += sigma * weightRValue * normalizedPositionVector
+                            * gaussianRandom(dropletId, neighbourId, step);
                 }
             }
         }
     }
     
-    return conservativeForce;
+    return conservativeForce + dissipativeForce + randomForce;
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
