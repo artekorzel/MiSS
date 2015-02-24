@@ -42,6 +42,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> newVelocities;
     private CLBuffer<Float> forces;
     private CLBuffer<Integer> states;
+    private CLBuffer<Integer> types;
     private CLBuffer<Dpd.Parameters> parameters;
     private Reductor<Float> sumator;
     private Reductor<Float> sumatorVector;
@@ -58,6 +59,7 @@ public class GpuKernelSimulation extends Simulation {
         numberOfDroplets = numberOfDropletsParam;
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
+        radiusIn = boxSize * 0.8f;
         numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
         
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
@@ -75,7 +77,8 @@ public class GpuKernelSimulation extends Simulation {
                 numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);        
+        states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);     
+        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);   
         velocitiesEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         sumator = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, 1);
         sumatorVector = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, VECTOR_SIZE);
@@ -144,9 +147,9 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent initPositionsAndVelocities() {
-        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions,
-                states, numberOfDroplets, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
-        return dpdKernel.generateRandomVector(queue, velocities, states, numberOfDroplets, 
+        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
+                states, numberOfDroplets, radiusIn, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
+        return dpdKernel.generateRandomVector(queue, velocities, states, types, numberOfDroplets, 
                 new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
 
@@ -168,14 +171,14 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, 
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, types,
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
                 numberOfCells, step, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces,
-                newPositions, newVelocities, parameters, deltaTime, numberOfDroplets, 
+                newPositions, newVelocities, parameters, types, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 
@@ -226,7 +229,7 @@ public class GpuKernelSimulation extends Simulation {
         }
         
         for(int i = 0; i < buckets.length; ++i) {
-            System.out.println(meanVels[i]);
+            System.out.println(String.format(Locale.GERMANY, "%e", meanVels[i]));
         }
                 
         positionsPointer.release();
@@ -260,13 +263,16 @@ public class GpuKernelSimulation extends Simulation {
         File resultFile = new File(directoryName, "result" + step + ".csv");
         try (FileWriter writer = new FileWriter(resultFile)) {
             Pointer<Float> out = buffer.read(queue, events);
-            writer.write("x, y, z\n");
+            Pointer<Integer> typesOut = types.read(queue, events);
+            writer.write("x, y, z, t\n");
             for (int i = 0; i < numberOfDroplets; i++) {
                 writer.write(out.get(i * VECTOR_SIZE) + SEPARATOR
                         + out.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                        + out.get(i * VECTOR_SIZE + 2) + "\n");
+                        + out.get(i * VECTOR_SIZE + 2) + SEPARATOR
+                        + typesOut.get(i) + "\n");
             }
             out.release();
+            typesOut.release();
         } catch (IOException e) {
             e.printStackTrace();
         }
