@@ -27,6 +27,7 @@ public class GpuKernelSimulation extends Simulation {
     private static final String SEPARATOR = ",";
     
     private String directoryName;
+    private String dataFileName = "simulation.data";
     
     private int step;
     private Random random;
@@ -49,14 +50,14 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> velocitiesEnergy;
     
     @Override
-    public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
+    public void initData() throws IOException {
         context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
 
         random = new Random();        
         
-        float sizeScale = numberOfDropletsParam / (float)baseNumberOfDroplets;
-        numberOfDroplets = numberOfDropletsParam;
+        
+        float sizeScale = numberOfDroplets / (float)baseNumberOfDroplets;        
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
         radiusIn = boxSize * 0.8f;
@@ -125,7 +126,7 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     private void initDropletParameters() {
-        List<Dpd.Parameters> params = super.createParameters();
+        List<Dpd.Parameters> params = super.loadParametersFromFile(dataFileName);
         long size = params.size();
         Pointer<Dpd.Parameters> valuesPointer
                 = Pointer.allocateArray(Dpd.Parameters.class, size).order(context.getByteOrder());
