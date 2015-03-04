@@ -175,9 +175,9 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         }
     }
     
-    /*if(step < 10) {
+    if(step < 120) {
         return conservativeForce + dissipativeForce + randomForce + (float3)(0, 0.001, 0);
-    }*/
+    }
     return conservativeForce + dissipativeForce + randomForce;
 }
 
