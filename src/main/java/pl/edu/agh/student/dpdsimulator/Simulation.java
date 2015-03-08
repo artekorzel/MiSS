@@ -11,10 +11,10 @@ public abstract class Simulation {
     public static final int VECTOR_SIZE = 4;
     public static final double NANOS_IN_SECOND = 1000000000.0;
     
-    public static final boolean shouldStoreFiles = false;
+    public static final boolean shouldStoreFiles = true;
     
     public static final int numberOfCellNeighbours = 27;
-    public static final int numberOfSteps = 20000;    
+    public static final int numberOfSteps = 10000;    
     public static final float deltaTime = 0.5f;
     
     public static final float initBoxSize = 4f;
@@ -52,43 +52,40 @@ public abstract class Simulation {
                 -1e-2f,
                 1e-3f);
         
-//        Dpd.PairParameters bloodBlood = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters plasmaPlasma = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters vesselBlood = createPairParameter(0.8f,
-//                1e-6f,
-//                -6e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters vesselPlasma = createPairParameter(0.8f,
-//                1e-6f,
-//                -6e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters bloodPlasma = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//                        
-//        pairs.set(0, vesselVessel);        
-//        pairs.set(1, vesselBlood);
-//        pairs.set(2, vesselPlasma);
-//        pairs.set(3, vesselBlood);
-//        pairs.set(4, bloodBlood);
-//        pairs.set(5, bloodPlasma);
-//        pairs.set(6, vesselPlasma);
-//        pairs.set(7, bloodPlasma);
-//        pairs.set(8, plasmaPlasma);
-        for(int i = 0; i < 9; ++i) {
-            pairs.set(i, vesselVessel);
-        }
+        Dpd.PairParameters bloodBlood = createPairParameter(0.4f,
+                1e-5f,
+                -1e-2f,
+                1e-3f);
+        
+        Dpd.PairParameters plasmaPlasma = createPairParameter(0.4f,
+                0f,
+                0f,
+                0f);
+        
+        Dpd.PairParameters vesselBlood = createPairParameter(0.4f,
+                1e-5f,
+                -1e-2f,
+                1e-3f);
+        
+        Dpd.PairParameters vesselPlasma = createPairParameter(0.4f,
+                0f,
+                0f,
+                0f);
+        
+        Dpd.PairParameters bloodPlasma = createPairParameter(0.4f,
+                0f,
+                0f,
+                0f);
+                        
+        pairs.set(0, vesselVessel);        
+        pairs.set(1, vesselBlood);
+        pairs.set(2, vesselPlasma);
+        pairs.set(3, vesselBlood);
+        pairs.set(4, bloodBlood);
+        pairs.set(5, bloodPlasma);
+        pairs.set(6, vesselPlasma);
+        pairs.set(7, bloodPlasma);
+        pairs.set(8, plasmaPlasma);
 
         return Arrays.asList(parameters);
     }

@@ -145,7 +145,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
             if(neighbourId != dropletId) {
                 int neighbourType = types[neighbourId];
                 
-                if(dropletType != 0 || neighbourType != 0) {
+                //if(dropletType != 0 || neighbourType != 0) {
                     float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, 
                             cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
                     float distanceValue = distance(neighbourPosition, dropletPosition);
@@ -170,14 +170,14 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                         randomForce += sigma * weightRValue * normalizedPositionVector
                                 * gaussianRandom(dropletId, neighbourId, step);
                     }
-                }
+                //}
             }
         }
     }
     
-    if(step < 120) {
+    /*if(step < 120) {
         return conservativeForce + dissipativeForce + randomForce + (float3)(0, 0.001, 0);
-    }
+    }*/
     return conservativeForce + dissipativeForce + randomForce;
 }
 
@@ -228,16 +228,23 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     float y = (rand(&seed, 1) * 2 - 1) * boxWidth;
     float z = (rand(&seed, 1) * 2 - 1) * boxSize;
     
-    float distanceFromY = sqrt(x * x + z * z);
+    /*float distanceFromY = sqrt(x * x + z * z);
     if (distanceFromY >= radiusIn) {
         types[dropletId] = 0;
     } else {
         float randomNum = rand(&seed, 1);
-        if (randomNum >= 0.5f) {
-            types[dropletId] = 1;    
+        if (randomNum > 0.5f) {
+            types[dropletId] = 1;
         } else {
             types[dropletId] = 2;
         }        
+    }*/
+    
+    float randomNum = rand(&seed, 1);
+    if (randomNum > 0.5f) {
+        types[dropletId] = 0;
+    } else {
+        types[dropletId] = 1;
     }
         
     states[dropletId] = seed;
