@@ -10,11 +10,6 @@ typedef struct PairParameters {
     float gamma;
 } PairParameters;
 
-typedef struct Parameters {
-    DropletParameters droplets[3];
-    PairParameters pairs[3][3];
-} Parameters;
-
 float weightR(float distanceValue, float cutoffRadius) {
     if(distanceValue > cutoffRadius) {
         return 0.0;
@@ -119,15 +114,14 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
     return position;
 }
 
-float3 calculateForce(global float3* positions, global float3* velocities, global Parameters* params,
-        global int* types, global int* cells, global int* cellNeighbours, float cellRadius, float boxSize, 
-        float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int step) {
+float3 calculateForce(global float3* positions, global float3* velocities, global PairParameters* pairParams,
+        global DropletParameters* dropletParams, global int* types, global int* cells, global int* cellNeighbours, 
+        float cellRadius, float boxSize, float boxWidth, int maxDropletsPerCell, int numberOfCells, int dropletId, int step,
+        int numberOfTypes) {
 
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
     float3 randomForce = (float3)(0.0, 0.0, 0.0);
-    
-    Parameters parameters = params[0];
 
     int dropletType = types[dropletId];
     float3 dropletPosition = positions[dropletId];
@@ -150,7 +144,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                             cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
                     float distanceValue = distance(neighbourPosition, dropletPosition);
 
-                    PairParameters pairParameters = parameters.pairs[dropletType][neighbourType];
+                    PairParameters pairParameters = pairParams[dropletType * numberOfTypes + neighbourType];
                     float cutoffRadius = pairParameters.cutoffRadius;
 
                     if(distanceValue < cutoffRadius) {
@@ -181,23 +175,24 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     return conservativeForce + dissipativeForce + randomForce;
 }
 
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
-        global Parameters* params, global int* types, global int* cells, global int* cellNeighbours, 
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global PairParameters* pairParams,
+        global DropletParameters* dropletParams, global int* types, global int* cells, global int* cellNeighbours, 
         float cellRadius, float boxSize, float boxWidth, int numberOfDroplets, int maxDropletsPerCell, 
-        int numberOfCells, int step) {
+        int numberOfCells, int step, int numberOfTypes) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
         return;
     }
 
-    forces[dropletId] = calculateForce(positions, velocities, params, types, cells, cellNeighbours, 
-            cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, dropletId, step);
+    forces[dropletId] = calculateForce(positions, velocities, pairParams, dropletParams, types, cells, cellNeighbours, 
+            cellRadius, boxSize, boxWidth, maxDropletsPerCell, numberOfCells, dropletId, step, numberOfTypes);
 }
 
 kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
-        global float3* forces, global float3* newPositions, global float3* newVelocities, global Parameters* params, 
-        global int* types, float deltaTime, int numberOfDroplets, float boxSize, float boxWidth) {
+        global float3* forces, global float3* newPositions, global float3* newVelocities, global PairParameters* pairParams,
+        global DropletParameters* dropletParams, global int* types, float deltaTime, int numberOfDroplets, 
+        float boxSize, float boxWidth) {
 
     int dropletId = get_global_id(0);
     if (dropletId >= numberOfDroplets) {
@@ -206,7 +201,7 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     
     float3 dropletVelocity = velocities[dropletId];
     float3 dropletForce = forces[dropletId];
-    float dropletMass = params[0].droplets[types[dropletId]].mass;
+    float dropletMass = dropletParams[types[dropletId]].mass;
 
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;            
     newPositions[dropletId] = normalizePosition(newPosition, boxSize, boxWidth);

@@ -44,7 +44,8 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> forces;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
-    private CLBuffer<Dpd.Parameters> parameters;
+    private CLBuffer<Dpd.DropletParameters> dropletParameters;
+    private CLBuffer<Dpd.PairParameters> pairParameters;    
     private Reductor<Float> sumator;
     private Reductor<Float> sumatorVector;
     private CLBuffer<Float> velocitiesEnergy;
@@ -126,15 +127,10 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     private void initDropletParameters() {
-        List<Dpd.Parameters> params = super.loadParametersFromFile(dataFileName);
-        long size = params.size();
-        Pointer<Dpd.Parameters> valuesPointer
-                = Pointer.allocateArray(Dpd.Parameters.class, size).order(context.getByteOrder());
-        for (int i = 0; i < size; i++) {
-            valuesPointer.set(i, params.get(i));
-        }
+        super.loadParametersFromFile(dataFileName);                   
 
-        parameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
+        pairParameters = context.createBuffer(CLMem.Usage.InputOutput, pairParametersPointer);
+        dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, dropletParametersPointer);
     }
 
     private void initStates() {
@@ -172,14 +168,14 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, pairParameters, dropletParameters, types,
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
-                numberOfCells, step, new int[]{numberOfDroplets}, null, events);
+                numberOfCells, step, numberOfCellKinds, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces,
-                newPositions, newVelocities, parameters, types, deltaTime, numberOfDroplets, 
+                newPositions, newVelocities, pairParameters, dropletParameters, types, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 

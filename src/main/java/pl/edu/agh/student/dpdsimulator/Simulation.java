@@ -38,65 +38,14 @@ public abstract class Simulation {
     public static int numberOfCells;
     public static int numberOfDroplets;
     public static int maxDropletsPerCell;
+    public static int numberOfCellKinds;
+    
+    protected Pointer<Dpd.DropletParameters> dropletParametersPointer;
+    protected Pointer<Dpd.PairParameters> pairParametersPointer;
         
     public abstract void initData() throws IOException;
     
     public abstract void performSimulation();
-
-//    protected List<Dpd.Parameters> createParameters() {
-//        Dpd.Parameters parameters = new Dpd.Parameters();
-//        Pointer<Dpd.DropletParameters> droplets = parameters.droplets();
-//        droplets.set(0, createDropletParameter(1000f, lambda));
-//        droplets.set(1, createDropletParameter(1f, lambda));
-//        droplets.set(2, createDropletParameter(1f, lambda));
-//        
-//        Pointer<Dpd.PairParameters> pairs = parameters.pairs();
-//        
-//        Dpd.PairParameters vesselVessel = createPairParameter(0.8f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters bloodBlood = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters plasmaPlasma = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters vesselBlood = createPairParameter(0.8f,
-//                1e-6f,
-//                -6e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters vesselPlasma = createPairParameter(0.8f,
-//                1e-6f,
-//                -6e-3f,
-//                1e-4f);
-//        
-//        Dpd.PairParameters bloodPlasma = createPairParameter(0.4f,
-//                1e-6f,
-//                1e-3f,
-//                1e-4f);
-//                        
-//        pairs.set(0, vesselVessel);        
-//        pairs.set(1, vesselBlood);
-//        pairs.set(2, vesselPlasma);
-//        pairs.set(3, vesselBlood);
-//        pairs.set(4, bloodBlood);
-//        pairs.set(5, bloodPlasma);
-//        pairs.set(6, vesselPlasma);
-//        pairs.set(7, bloodPlasma);
-//        pairs.set(8, plasmaPlasma);
-////        for(int i = 0; i < 9; ++i) {
-////            pairs.set(i, vesselVessel);
-////        }
-//
-//        return Arrays.asList(parameters);
-//    }
 
     protected Dpd.DropletParameters createDropletParameter(float mass, float lambda) {
         Dpd.DropletParameters dropletParameter = new Dpd.DropletParameters();
@@ -134,9 +83,7 @@ public abstract class Simulation {
         }
     }
     
-    protected List<Dpd.Parameters> loadParametersFromFile(String filename){
-        Dpd.Parameters parameters = new Dpd.Parameters();        
-        int numberOfCellKinds;
+    protected void loadParametersFromFile(String filename){        
         float[] mass, lambda;
         float[][] cutOffRadius, pi, gamma, sigma;
         try {                              
@@ -153,11 +100,13 @@ public abstract class Simulation {
             for(int i = 0; i < numberOfCellKinds; i++){
                 lambda[i] = getFloat(bufferedReader.readLine());
             }
-            
-            Pointer<Dpd.DropletParameters> droplets = parameters.droplets();
+                        
+            dropletParametersPointer = Pointer.allocateArray(Dpd.DropletParameters.class, numberOfCellKinds);
             for(int i = 0; i < numberOfCellKinds; i++){                                
-                droplets.set(i, createDropletParameter(mass[i], lambda[i]));                
+                dropletParametersPointer.set(i, createDropletParameter(mass[i], lambda[i]));                
             }
+            
+            
             
             cutOffRadius = new float[numberOfCellKinds][numberOfCellKinds];
             for(int i = 0; i < numberOfCellKinds; i++){
@@ -187,11 +136,11 @@ public abstract class Simulation {
                 }
             }
             
-            int counter = 0;
-            Pointer<Dpd.PairParameters> pairs = parameters.pairs();
+            int counter = 0;            
+            pairParametersPointer = Pointer.allocateArray(Dpd.PairParameters.class, numberOfCellKinds * numberOfCellKinds);
             for(int i = 0; i < numberOfCellKinds; i++){
                 for(int j = 0; j < numberOfCellKinds; j++){
-                    pairs.set(counter++, createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]));
+                    pairParametersPointer.set(counter++, createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]));
                 }
             }                        
         } catch (FileNotFoundException ex) {
@@ -199,21 +148,20 @@ public abstract class Simulation {
         } catch (IOException ex) {
             
         }
-        return Arrays.asList(parameters);
     }
 
     private boolean getBoolean(String line) {
-        String result = line.split(":")[1];
+        String result = line.split(":")[1].replaceAll("\\s", "");
         return Boolean.parseBoolean(result);
     }
     
     private int getInt(String line) {
-        String result = line.split(":")[1];
+        String result = line.split(":")[1].replaceAll("\\s", "");
         return Integer.parseInt(result);
     }
     
     private float getFloat(String line) {
-        String result = line.split(":")[1];
+        String result = line.split(":")[1].replaceAll("\\s", "");
         return Float.parseFloat(result);
     }
 }
