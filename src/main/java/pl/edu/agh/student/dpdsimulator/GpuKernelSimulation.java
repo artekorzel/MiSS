@@ -27,6 +27,7 @@ public class GpuKernelSimulation extends Simulation {
     private static final String SEPARATOR = ",";
     
     private String directoryName;
+    private String dataFileName = "simulation.data";
     
     private int step;
     private Random random;
@@ -43,20 +44,21 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> forces;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
-    private CLBuffer<Dpd.Parameters> parameters;
+    private CLBuffer<Dpd.DropletParameters> dropletParameters;
+    private CLBuffer<Dpd.PairParameters> pairParameters;    
     private Reductor<Float> sumator;
     private Reductor<Float> sumatorVector;
     private CLBuffer<Float> velocitiesEnergy;
     
     @Override
-    public void initData(float boxSizeScale, float boxWidthScale, int numberOfDropletsParam) throws IOException {
+    public void initData() throws IOException {
         context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
 
         random = new Random();        
         
-        float sizeScale = numberOfDropletsParam / (float)baseNumberOfDroplets;
-        numberOfDroplets = numberOfDropletsParam;
+        
+        float sizeScale = numberOfDroplets / (float)baseNumberOfDroplets;        
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
         radiusIn = boxSize * 0.8f;
@@ -125,15 +127,10 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     private void initDropletParameters() {
-        List<Dpd.Parameters> params = super.createParameters();
-        long size = params.size();
-        Pointer<Dpd.Parameters> valuesPointer
-                = Pointer.allocateArray(Dpd.Parameters.class, size).order(context.getByteOrder());
-        for (int i = 0; i < size; i++) {
-            valuesPointer.set(i, params.get(i));
-        }
+        super.loadParametersFromFile(dataFileName);                   
 
-        parameters = context.createBuffer(CLMem.Usage.InputOutput, valuesPointer);
+        pairParameters = context.createBuffer(CLMem.Usage.InputOutput, pairParametersPointer);
+        dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, dropletParametersPointer);
     }
 
     private void initStates() {
@@ -171,14 +168,14 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, parameters, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, pairParameters, dropletParameters, types,
                 cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
-                numberOfCells, step, new int[]{numberOfDroplets}, null, events);
+                numberOfCells, step, numberOfCellKinds, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces,
-                newPositions, newVelocities, parameters, types, deltaTime, numberOfDroplets, 
+                newPositions, newVelocities, pairParameters, dropletParameters, types, deltaTime, numberOfDroplets, 
                 boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
     }
 
