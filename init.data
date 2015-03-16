@@ -1,6 +1,0 @@
-shouldStoreFiles=false
-numberOfSteps=10000
-deltaTime=1f
-cellRadius=0.8f
-boxSizeScale=1f
-boxWidthScale=1f
