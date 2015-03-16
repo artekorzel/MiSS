@@ -18,10 +18,13 @@ public class RandomSimulation {
         CLQueue queue = context.createDefaultQueue();
                 
         RandomCL kernel = new RandomCL(context);
-                
+        
+        Pointer<RandomCL.TestStruct> pointer = Pointer.allocate(RandomCL.TestStruct.class);
+        pointer.set(new RandomCL.TestStruct().mass(10));
+        CLBuffer<RandomCL.TestStruct> struct = context.createBuffer(CLMem.Usage.Input, pointer);
         CLBuffer<Float> res = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
         
-        CLEvent evt = kernel.test2(queue, res, new int[]{1}, null);
+        CLEvent evt = kernel.test3(queue, struct, res, new int[]{1}, null);
         float value = res.read(queue, evt).getFloat();
         
         System.out.println(value);

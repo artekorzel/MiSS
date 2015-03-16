@@ -11,10 +11,8 @@ import com.nativelibs4java.opencl.util.ReductionUtils;
 import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -27,7 +25,6 @@ public class GpuKernelSimulation extends Simulation {
     private static final String SEPARATOR = ",";
     
     private String directoryName;
-    private String dataFileName = "simulation.data";
     
     private int step;
     private Random random;
@@ -44,6 +41,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> forces;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
+    private CLBuffer<Dpd.SimulationParameters> simulationParameters;
     private CLBuffer<Dpd.DropletParameters> dropletParameters;
     private CLBuffer<Dpd.PairParameters> pairParameters;    
     private Reductor<Float> sumator;
@@ -51,12 +49,10 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> velocitiesEnergy;
     
     @Override
-    public void initData() throws IOException {
+    public void initData() throws Exception {
         context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
-
-        random = new Random();        
-        
+        random = new Random();                
         
         float sizeScale = numberOfDroplets / (float)baseNumberOfDroplets;        
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
@@ -98,7 +94,7 @@ public class GpuKernelSimulation extends Simulation {
     }
     
     @Override
-    public void performSimulation() {                              
+    public void performSimulation() throws Exception {                              
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
@@ -108,7 +104,9 @@ public class GpuKernelSimulation extends Simulation {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
-            writePositionsFile(newPositions, loopEndEvent);
+            if(step % 1000 == 0){
+                writePositionsFile(newPositions, loopEndEvent);
+            }
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
@@ -118,19 +116,33 @@ public class GpuKernelSimulation extends Simulation {
         countSpecial(positions, velocities);
     }
     
-    private CLEvent initSimulationData() {
-        initDropletParameters();
+    private CLEvent initSimulationData() throws Exception {
+        initParameters();
         initStates();
         CLEvent initPositionsAndVelocities = initPositionsAndVelocities();
         CLEvent fillCells = fillCells(positions, initPositionsAndVelocities);
         return fillCellNeighbours(fillCells);
     }
     
-    private void initDropletParameters() {
-        super.loadParametersFromFile(dataFileName);                   
-
+    private void initParameters() throws Exception {
+        super.loadParametersFromFile(dataFileName);
+        Pointer<Dpd.SimulationParameters> simulationParametersPointer = Pointer.allocate(Dpd.SimulationParameters.class);
+        simulationParametersPointer.set(createSimulationParameter());
+        simulationParameters = context.createBuffer(CLMem.Usage.InputOutput, simulationParametersPointer);
         pairParameters = context.createBuffer(CLMem.Usage.InputOutput, pairParametersPointer);
         dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, dropletParametersPointer);
+    }
+    
+    private Dpd.SimulationParameters createSimulationParameter() {
+        return new Dpd.SimulationParameters()
+                .boxSize(boxSize)
+                .boxWidth(boxWidth)
+                .numberOfDroplets(numberOfDroplets)
+                .numberOfCells(numberOfCells)
+                .numberOfTypes(numberOfCellKinds)
+                .maxDropletsPerCell(maxDropletsPerCell)
+                .deltaTime(deltaTime)
+                .cellRadius(cellRadius);
     }
 
     private void initStates() {
@@ -145,19 +157,17 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
-                states, numberOfDroplets, radiusIn, boxSize, boxWidth, new int[]{numberOfDroplets}, null);
-        return dpdKernel.generateRandomVector(queue, velocities, states, types, numberOfDroplets, 
+                states, simulationParameters, new int[]{numberOfDroplets}, null);
+        return dpdKernel.generateVelocities(queue, velocities, states, types, simulationParameters, 
                 new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }
 
     private CLEvent fillCells(CLBuffer<Float> positions, CLEvent... events) {
-        return dpdKernel.fillCells(queue, cells, positions, cellRadius, boxSize, boxWidth, numberOfDroplets,
-                maxDropletsPerCell, numberOfCells, new int[]{numberOfCells}, null, events);
+        return dpdKernel.fillCells(queue, cells, positions, simulationParameters, new int[]{numberOfCells}, null, events);
     }
 
     private CLEvent fillCellNeighbours(CLEvent... events) {
-        return dpdKernel.fillCellNeighbours(queue, cellNeighbours, cellRadius, boxSize, boxWidth,
-                numberOfCells, new int[]{numberOfCells}, null, events);
+        return dpdKernel.fillCellNeighbours(queue, cellNeighbours, simulationParameters, new int[]{numberOfCells}, null, events);
     }
 
     private CLEvent performSingleStep(CLEvent... events) {
@@ -168,15 +178,15 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, pairParameters, dropletParameters, types,
-                cells, cellNeighbours, cellRadius, boxSize, boxWidth, numberOfDroplets, maxDropletsPerCell, 
-                numberOfCells, step, numberOfCellKinds, new int[]{numberOfDroplets}, null, events);
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, types,
+                cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
+                step, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
         return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces,
-                newPositions, newVelocities, pairParameters, dropletParameters, types, deltaTime, numberOfDroplets, 
-                boxSize, boxWidth, new int[]{numberOfDroplets}, null, events);
+                newPositions, newVelocities, types, pairParameters, dropletParameters, 
+                simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
 
     private void swapPositions(CLEvent... events) {
@@ -239,7 +249,7 @@ public class GpuKernelSimulation extends Simulation {
 //        float avgVelocityY = velocitiesSum.get(1) / numberOfDroplets;
 //        float avgVelocityZ = velocitiesSum.get(2) / numberOfDroplets;
         CLEvent reductionEvent = dpdKernel.calculateVelocitiesEnergy(queue, newVelocities, velocitiesEnergy, 
-                numberOfDroplets, new int[]{numberOfDroplets}, null, events);
+                simulationParameters, new int[]{numberOfDroplets}, null, events);
         Pointer<Float> kineticEnergySum = sumator.reduce(queue, velocitiesEnergy, reductionEvent);
         float ek = kineticEnergySum.get(0) / numberOfDroplets;
         System.out.println(
@@ -270,7 +280,7 @@ public class GpuKernelSimulation extends Simulation {
             }
             out.release();
             typesOut.release();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

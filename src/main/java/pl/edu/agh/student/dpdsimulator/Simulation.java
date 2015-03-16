@@ -1,16 +1,8 @@
 package pl.edu.agh.student.dpdsimulator;
 
-import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
@@ -18,10 +10,10 @@ public abstract class Simulation {
 
     public static final int VECTOR_SIZE = 4;
     public static final double NANOS_IN_SECOND = 1000000000.0;
+    public static final int numberOfCellNeighbours = 27;
+    public static final String dataFileName = "simulation.data";
     
-    public static boolean shouldStoreFiles;
-    
-    public static int numberOfCellNeighbours = 27;
+    public static boolean shouldStoreFiles;    
     public static int numberOfSteps;    
     public static float deltaTime;
     
@@ -48,14 +40,13 @@ public abstract class Simulation {
     protected Pointer<Dpd.DropletParameters> dropletParametersPointer;
     protected Pointer<Dpd.PairParameters> pairParametersPointer;
         
-    public abstract void initData() throws IOException;
+    public abstract void initData() throws Exception;
     
-    public abstract void performSimulation();
+    public abstract void performSimulation() throws Exception;
 
-    protected Dpd.DropletParameters createDropletParameter(float mass, float lambda) {
+    protected Dpd.DropletParameters createDropletParameter(float mass) {
         Dpd.DropletParameters dropletParameter = new Dpd.DropletParameters();
         dropletParameter.mass(mass);
-        dropletParameter.lambda(lambda);
         return dropletParameter;
     }
     
@@ -68,9 +59,9 @@ public abstract class Simulation {
         return pairParameter;        
     }
     
-    protected void loadInitialDataFromFile(String filename){
+    protected void loadInitialDataFromFile(String fileName){
         try{
-            Properties prop = getProperties();
+            Properties prop = getProperties(fileName);
 
             shouldStoreFiles = Boolean.parseBoolean(prop.getProperty("shouldStoreFiles"));
             numberOfSteps = Integer.parseInt(prop.getProperty("numberOfSteps"));
@@ -91,97 +82,64 @@ public abstract class Simulation {
         }
     }
 
-    protected void loadParametersFromFile(String filename){        
-        float[] mass, lambda;
-        float[][] cutOffRadius, pi, gamma, sigma;
-        try {                              
-            Properties prop = getProperties();
-            
-            numberOfCellKinds = Integer.parseInt(prop.getProperty("numberOfCellKinds"));
-            
-            mass = new float[numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                mass[i] = Float.parseFloat(prop.getProperty("mass(" + i + ")"));
+    protected void loadParametersFromFile(String filename) throws Exception {        
+        float[] mass;
+        float[][] cutOffRadius, pi, gamma, sigma;                          
+        Properties prop = getProperties(filename);
+
+        numberOfCellKinds = Integer.parseInt(prop.getProperty("numberOfCellKinds"));
+
+        mass = new float[numberOfCellKinds];
+        for(int i = 0; i < numberOfCellKinds; i++){
+            mass[i] = Float.parseFloat(prop.getProperty("mass(" + i + ")"));
+        }
+
+        dropletParametersPointer = Pointer.allocateArray(Dpd.DropletParameters.class, numberOfCellKinds);
+        for(int i = 0; i < numberOfCellKinds; i++){                                
+            dropletParametersPointer.set(i, createDropletParameter(mass[i]));                
+        }
+
+        cutOffRadius = new float[numberOfCellKinds][numberOfCellKinds];
+        for(int i = 0; i < numberOfCellKinds; i++){
+            for(int j = i; j < numberOfCellKinds; j++){
+                cutOffRadius[i][j] = cutOffRadius[j][i] = Float.parseFloat(prop.getProperty("cutoffRadius(" + i + "," + j + ")"));
             }
-            
-            lambda = new float[numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                lambda[i] = Float.parseFloat(prop.getProperty("lambda(" + i + ")"));
+        }
+
+        pi = new float[numberOfCellKinds][numberOfCellKinds];
+        for(int i = 0; i < numberOfCellKinds; i++){
+            for(int j = i; j < numberOfCellKinds; j++){
+                pi[i][j] = pi[j][i] = Float.parseFloat(prop.getProperty("pi(" + i + "," + j + ")"));
             }
-                        
-            dropletParametersPointer = Pointer.allocateArray(Dpd.DropletParameters.class, numberOfCellKinds);
-            for(int i = 0; i < numberOfCellKinds; i++){                                
-                dropletParametersPointer.set(i, createDropletParameter(mass[i], lambda[i]));                
+        }
+
+        gamma = new float[numberOfCellKinds][numberOfCellKinds];
+        for(int i = 0; i < numberOfCellKinds; i++){
+            for(int j = i; j < numberOfCellKinds; j++){
+                gamma[i][j] = gamma[j][i] = Float.parseFloat(prop.getProperty("gamma(" + i + "," + j + ")"));
             }
-            
-            
-            
-            cutOffRadius = new float[numberOfCellKinds][numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                for(int j = i; j < numberOfCellKinds; j++){
-                    cutOffRadius[i][j] = cutOffRadius[j][i] = Float.parseFloat(prop.getProperty("cutoffRadius(" + i + "," + j + ")"));
-                }
+        }
+
+        sigma = new float[numberOfCellKinds][numberOfCellKinds];
+        for(int i = 0; i < numberOfCellKinds; i++){
+            for(int j = i; j < numberOfCellKinds; j++){
+                sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
             }
-            
-            pi = new float[numberOfCellKinds][numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                for(int j = i; j < numberOfCellKinds; j++){
-                    pi[i][j] = pi[j][i] = Float.parseFloat(prop.getProperty("pi(" + i + "," + j + ")"));
-                }
+        }
+
+        int counter = 0;            
+        pairParametersPointer = Pointer.allocateArray(Dpd.PairParameters.class, numberOfCellKinds * numberOfCellKinds);
+        for(int i = 0; i < numberOfCellKinds; i++){
+            for(int j = 0; j < numberOfCellKinds; j++){
+                pairParametersPointer.set(counter++, createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]));
             }
-                        
-            gamma = new float[numberOfCellKinds][numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                for(int j = i; j < numberOfCellKinds; j++){
-                    gamma[i][j] = gamma[j][i] = Float.parseFloat(prop.getProperty("gamma(" + i + "," + j + ")"));
-                }
-            }
-            
-            sigma = new float[numberOfCellKinds][numberOfCellKinds];
-            for(int i = 0; i < numberOfCellKinds; i++){
-                for(int j = i; j < numberOfCellKinds; j++){
-                    sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
-                }
-            }
-            
-            int counter = 0;            
-            pairParametersPointer = Pointer.allocateArray(Dpd.PairParameters.class, numberOfCellKinds * numberOfCellKinds);
-            for(int i = 0; i < numberOfCellKinds; i++){
-                for(int j = 0; j < numberOfCellKinds; j++){
-                    pairParametersPointer.set(counter++, createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]));
-                }
-            }                        
-        } catch (FileNotFoundException ex) {
-            
-        } catch (IOException ex) {
-            
         }
     }
 
-    private Properties getProperties() throws IOException {
+    private Properties getProperties(String fileName) throws Exception {
         Properties prop = new Properties();
-        String propFileName = "simulation.data";
-        InputStream inputStream = new FileInputStream(propFileName);
-        if (inputStream != null) {
-            prop.load(inputStream);
-        } else {
-            throw new FileNotFoundException("property file '" + propFileName + "' not found in the classpath");
-        }
+        InputStream inputStream = new FileInputStream(fileName);
+        prop.load(inputStream);
         return prop;
-    }
-    
-    private boolean getBoolean(String line) {
-        String result = line.split(":")[1].replaceAll("\\s", "");
-        return Boolean.parseBoolean(result);
-    }
-    
-    private int getInt(String line) {
-        String result = line.split(":")[1].replaceAll("\\s", "");
-        return Integer.parseInt(result);
-    }
-    
-    private float getFloat(String line) {
-        String result = line.split(":")[1].replaceAll("\\s", "");
-        return Float.parseFloat(result);
     }
 }

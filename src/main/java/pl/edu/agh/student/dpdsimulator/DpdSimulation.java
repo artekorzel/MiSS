@@ -1,11 +1,12 @@
 package pl.edu.agh.student.dpdsimulator;
 
-public class DpdSimulation {            
+public class DpdSimulation {    
+    
+    
     public static void main(String[] args) {
         try {
             Simulation simulation = new GpuKernelSimulation();
-//            Simulation simulation = new JavaDpdMock();
-            simulation.loadInitialDataFromFile("init.data");
+            simulation.loadInitialDataFromFile(Simulation.dataFileName);
             simulation.initData();
             simulation.performSimulation();
         } catch (Exception e) {

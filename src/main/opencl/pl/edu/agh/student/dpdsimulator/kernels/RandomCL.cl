@@ -90,3 +90,12 @@ kernel void calculateCellCoordinates(global int3* res, int dropletCellId, float 
 kernel void test2(global float* a) {
     a[0] = (-5) % 5;
 }
+
+
+typedef struct TestStruct {
+    float mass;
+} TestStruct;
+
+kernel void test3(constant TestStruct *aStruct, global float* out) {
+    out[0] = aStruct->mass;
+}
