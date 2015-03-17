@@ -86,7 +86,7 @@ public class GpuKernelSimulation extends Simulation {
         if(!shouldStoreFiles) {
             return;
         }
-        directoryName = "../results_" + new Date().getTime();
+        directoryName = resultsDirectoryBase + new Date().getTime();
         File directory = new File(directoryName);
         if (!directory.exists()) {
             directory.mkdir();
@@ -104,7 +104,7 @@ public class GpuKernelSimulation extends Simulation {
 //            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
-            if(step % 1000 == 0){
+            if(step % stepDumpThreshold == 0){
                 writePositionsFile(newPositions, loopEndEvent);
             }
             swapPositions(loopEndEvent);
@@ -142,7 +142,8 @@ public class GpuKernelSimulation extends Simulation {
                 .numberOfTypes(numberOfCellKinds)
                 .maxDropletsPerCell(maxDropletsPerCell)
                 .deltaTime(deltaTime)
-                .cellRadius(cellRadius);
+                .cellRadius(cellRadius)
+                .radiusIn(radiusIn);
     }
 
     private void initStates() {
@@ -156,8 +157,14 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent initPositionsAndVelocities() {
-        CLEvent generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
+        CLEvent generatePositionsEvent;
+        if(generateRandomPositions){
+            generatePositionsEvent = dpdKernel.generateRandomPositions(queue, positions, types,
                 states, simulationParameters, new int[]{numberOfDroplets}, null);
+        } else {
+            generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
+                states, simulationParameters, new int[]{numberOfDroplets}, null);        
+        }
         return dpdKernel.generateVelocities(queue, velocities, states, types, simulationParameters, 
                 new int[]{numberOfDroplets}, null, generatePositionsEvent);
     }

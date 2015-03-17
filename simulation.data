@@ -1,18 +1,22 @@
 #INIT DATA
 shouldStoreFiles=true
-numberOfSteps=10000
+numberOfSteps=1
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
 boxWidthScale=1f
 initBoxSize=8f
 initBoxWidth=8f
+radiusIn=0.8f
 maxDropletsPerCell=31
 averageDropletsPerCell=8
 numberOfDroplets=4000
+generateRandomPositions=true
+resultsDirectoryBase=../results_
+stepDumpThreshold=1000
 
 #SIMULATION DATA
-numberOfCellKinds=2
+numberOfCellKinds=3
 mass(0)=1
 mass(1)=1
 mass(2)=1

@@ -1,5 +1,6 @@
 package pl.edu.agh.student.dpdsimulator;
 
+import com.nativelibs4java.opencl.CLEvent;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
@@ -12,8 +13,7 @@ public abstract class Simulation {
     public static final double NANOS_IN_SECOND = 1000000000.0;
     public static final int numberOfCellNeighbours = 27;
     public static final String dataFileName = "simulation.data";
-    
-    public static boolean shouldStoreFiles;    
+     
     public static int numberOfSteps;    
     public static float deltaTime;
     
@@ -37,6 +37,11 @@ public abstract class Simulation {
     public static int averageDropletsPerCell;
     public static int numberOfCellKinds;
     
+    public static boolean shouldStoreFiles;   
+    public static String resultsDirectoryBase;
+    public static int stepDumpThreshold;
+    
+    public static boolean generateRandomPositions;
     protected Pointer<Dpd.DropletParameters> dropletParametersPointer;
     protected Pointer<Dpd.PairParameters> pairParametersPointer;
         
@@ -74,6 +79,10 @@ public abstract class Simulation {
             maxDropletsPerCell = Integer.parseInt(prop.getProperty("maxDropletsPerCell"));
             averageDropletsPerCell = Integer.parseInt(prop.getProperty("averageDropletsPerCell"));
             numberOfDroplets = Integer.parseInt(prop.getProperty("numberOfDroplets"));
+            generateRandomPositions = Boolean.parseBoolean(prop.getProperty("generateRandomPositions"));
+            radiusIn = Float.parseFloat(prop.getProperty("radiusIn"));
+            resultsDirectoryBase = prop.getProperty("resultsDirectoryBase");
+            stepDumpThreshold = Integer.parseInt(prop.getProperty("stepDumpThreshold"));
             
             baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
             baseNumberOfDroplets = baseNumberOfCells * averageDropletsPerCell;

@@ -243,24 +243,37 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     float y = (rand(&seed, 1) * 2 - 1) * simulationParams.boxWidth;
     float z = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
     
-    /*float distanceFromY = sqrt(x * x + z * z);
-    if (distanceFromY >= radiusIn) {
+    float distanceFromY = sqrt(x * x + z * z);
+    if (distanceFromY >= simulationParams.radiusIn) {
         types[dropletId] = 0;
     } else {
         float randomNum = rand(&seed, 1);
-        if (randomNum > 0.5f) {
-            types[dropletId] = 1;
-        } else {
-            types[dropletId] = 2;
-        }        
-    }*/
-    
-    float randomNum = rand(&seed, 1);
-    if (randomNum > 0.5f) {
-        types[dropletId] = 0;
-    } else {
-        types[dropletId] = 1;
+        types[dropletId] = (int)(randomNum / (1.0f / (simulationParams.numberOfTypes - 1))) + 1;               
     }
+        
+    states[dropletId] = seed;
+    vector[dropletId] = (float3) (x, y, z);
+}
+
+kernel void generateRandomPositions(global float3* vector, global int* types, global int* states, 
+        constant SimulationParameters* simulationParameters) {
+            
+    SimulationParameters simulationParams = simulationParameters[0];
+    
+    int dropletId = get_global_id(0);
+    if (dropletId >= simulationParams.numberOfDroplets) {
+        return;
+    }
+    
+    int seed = states[dropletId];   
+    
+    float x = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
+    float y = (rand(&seed, 1) * 2 - 1) * simulationParams.boxWidth;
+    float z = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
+    
+    float interval = 1.0f / simulationParams.numberOfTypes;
+    float randomNum = rand(&seed, 1);
+    types[dropletId] = (int)(randomNum / interval);    
         
     states[dropletId] = seed;
     vector[dropletId] = (float3) (x, y, z);
