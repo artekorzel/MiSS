@@ -1,6 +1,5 @@
 package pl.edu.agh.student.dpdsimulator;
 
-import com.nativelibs4java.opencl.CLEvent;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
@@ -37,7 +36,10 @@ public abstract class Simulation {
     public static int averageDropletsPerCell;
     public static int numberOfCellKinds;
     
-    public static boolean shouldStoreFiles;   
+    public static boolean shouldStoreFiles;
+    public static boolean shouldPrintAvgVelocity;
+    public static boolean shouldPrintKineticEnergy;
+    public static boolean shouldPrintVelocityProfile;
     public static String resultsDirectoryBase;
     public static int stepDumpThreshold;
     
@@ -69,6 +71,9 @@ public abstract class Simulation {
             Properties prop = getProperties(fileName);
 
             shouldStoreFiles = Boolean.parseBoolean(prop.getProperty("shouldStoreFiles"));
+            shouldPrintAvgVelocity = Boolean.parseBoolean(prop.getProperty("shouldPrintAvgVelocity"));
+            shouldPrintKineticEnergy = Boolean.parseBoolean(prop.getProperty("shouldPrintKineticEnergy"));
+            shouldPrintVelocityProfile = Boolean.parseBoolean(prop.getProperty("shouldPrintVelocityProfile"));
             numberOfSteps = Integer.parseInt(prop.getProperty("numberOfSteps"));
             deltaTime = Float.parseFloat(prop.getProperty("deltaTime"));
             cellRadius = Float.parseFloat(prop.getProperty("cellRadius"));

@@ -1,6 +1,5 @@
 #INIT DATA
-shouldStoreFiles=true
-numberOfSteps=1
+numberOfSteps=1000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
@@ -8,15 +7,19 @@ boxWidthScale=1f
 initBoxSize=8f
 initBoxWidth=8f
 radiusIn=0.8f
-maxDropletsPerCell=31
-averageDropletsPerCell=8
+maxDropletsPerCell=21
+averageDropletsPerCell=4
 numberOfDroplets=4000
+shouldStoreFiles=true
+shouldPrintAvgVelocity=false
+shouldPrintKineticEnergy=true
+shouldPrintVelocityProfile=true
 generateRandomPositions=true
 resultsDirectoryBase=../results_
-stepDumpThreshold=1000
+stepDumpThreshold=100
 
 #SIMULATION DATA
-numberOfCellKinds=3
+numberOfCellKinds=2
 mass(0)=1
 mass(1)=1
 mass(2)=1

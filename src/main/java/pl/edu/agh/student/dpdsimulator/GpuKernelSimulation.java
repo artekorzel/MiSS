@@ -45,7 +45,6 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Dpd.DropletParameters> dropletParameters;
     private CLBuffer<Dpd.PairParameters> pairParameters;    
     private Reductor<Float> sumator;
-    private Reductor<Float> sumatorVector;
     private CLBuffer<Float> velocitiesEnergy;
     
     @Override
@@ -79,7 +78,6 @@ public class GpuKernelSimulation extends Simulation {
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);   
         velocitiesEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         sumator = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, 1);
-        sumatorVector = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
 
@@ -98,22 +96,23 @@ public class GpuKernelSimulation extends Simulation {
         long startTime = System.nanoTime();
         step = 0;
         CLEvent loopEndEvent = initSimulationData();
-        writePositionsFile(positions, loopEndEvent);    
+        writeDataFile(positions, velocities, loopEndEvent);   
+        printAverageVelocity(velocities, loopEndEvent); 
+        printKineticEnergy(velocities, loopEndEvent);
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
-//            System.out.println("\nStep: " + step);
+            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
-            printAverageVelocity(loopEndEvent);
-            if(step % stepDumpThreshold == 0){
-                writePositionsFile(newPositions, loopEndEvent);
-            }
+            printAverageVelocity(newVelocities, loopEndEvent);
+            printKineticEnergy(newVelocities, loopEndEvent);
+            writeDataFile(newPositions, newVelocities, loopEndEvent);
             swapPositions(loopEndEvent);
             swapVelocities(loopEndEvent);
         }
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
-        countSpecial(positions, velocities);
+        printVelocityProfile(positions, velocities);
     }
     
     private CLEvent initSimulationData() throws Exception {
@@ -210,7 +209,72 @@ public class GpuKernelSimulation extends Simulation {
         newVelocities = tmp;
     }
 
-    private void countSpecial(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+    private void printAverageVelocity(CLBuffer<Float> velocities, CLEvent... events) {      
+        if(!shouldPrintAvgVelocity) {
+            return;
+        }
+        Pointer<Float> velocitiesOut = velocities.read(queue, events);
+        float velocitiesSumX = 0f, velocitiesSumY = 0f, velocitiesSumZ = 0f;
+        for(int i = 0; i < numberOfDroplets; ++i) {
+            velocitiesSumX += velocitiesOut.get(i * VECTOR_SIZE);
+            velocitiesSumY += velocitiesOut.get(i * VECTOR_SIZE + 1);
+            velocitiesSumZ += velocitiesOut.get(i * VECTOR_SIZE + 2);
+        }
+        float avgVelocityX = velocitiesSumX / numberOfDroplets;
+        float avgVelocityY = velocitiesSumY / numberOfDroplets;
+        float avgVelocityZ = velocitiesSumZ / numberOfDroplets;
+        System.out.println("avgVelocity=" 
+                + avgVelocityX + SEPARATOR
+                + avgVelocityY + SEPARATOR 
+                + avgVelocityZ);
+        velocitiesOut.release();
+    }
+
+    private void printKineticEnergy(CLBuffer<Float> velocities, CLEvent... events) {
+        if(!shouldPrintKineticEnergy) {
+            return;
+        }        
+        CLEvent reductionEvent = dpdKernel.calculateVelocitiesEnergy(queue, velocities, velocitiesEnergy, 
+                simulationParameters, new int[]{numberOfDroplets}, null, events);
+        Pointer<Float> kineticEnergySum = sumator.reduce(queue, velocitiesEnergy, reductionEvent);
+        float ek = kineticEnergySum.get(0) / numberOfDroplets;
+        System.out.println("Ek=" + String.format(Locale.GERMANY, "%e", ek));
+        kineticEnergySum.release();
+    }
+
+    private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+        if(!shouldStoreFiles || step % stepDumpThreshold != 0) {
+            return;
+        }
+        File resultFile = new File(directoryName, "result" + step + ".csv");
+        try (FileWriter writer = new FileWriter(resultFile)) {
+            Pointer<Float> positionsOut = positions.read(queue, events);
+            Pointer<Float> velocitiesOut = velocities.read(queue, events);
+            Pointer<Integer> typesOut = types.read(queue, events);
+            writer.write("x,y,z,vx,vy,vz,t\n");
+            for (int i = 0; i < numberOfDroplets; i++) {
+                writer.write(
+                        positionsOut.get(i * VECTOR_SIZE) + SEPARATOR
+                        + positionsOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                        + positionsOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
+                        + velocitiesOut.get(i * VECTOR_SIZE) + SEPARATOR
+                        + velocitiesOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                        + velocitiesOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
+                        + typesOut.get(i) + "\n");
+            }
+            positionsOut.release();
+            velocitiesOut.release();
+            typesOut.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void printVelocityProfile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+        if(!shouldPrintVelocityProfile) {
+            return;
+        }
+        
         final double sliceSize = cellRadius;
         Pointer<Float> positionsPointer = positions.read(queue, events);
         Set[] buckets = new Set[(int)Math.ceil(2 * boxSize / sliceSize)];
@@ -248,47 +312,5 @@ public class GpuKernelSimulation extends Simulation {
                 
         positionsPointer.release();
         velocitiesPointer.release();
-    }
-
-    private void printAverageVelocity(CLEvent... events) {        
-//        Pointer<Float> velocitiesSum = sumatorVector.reduce(queue, newVelocities, events);
-//        float avgVelocityX = velocitiesSum.get(0) / numberOfDroplets;
-//        float avgVelocityY = velocitiesSum.get(1) / numberOfDroplets;
-//        float avgVelocityZ = velocitiesSum.get(2) / numberOfDroplets;
-        CLEvent reductionEvent = dpdKernel.calculateVelocitiesEnergy(queue, newVelocities, velocitiesEnergy, 
-                simulationParameters, new int[]{numberOfDroplets}, null, events);
-        Pointer<Float> kineticEnergySum = sumator.reduce(queue, velocitiesEnergy, reductionEvent);
-        float ek = kineticEnergySum.get(0) / numberOfDroplets;
-        System.out.println(
-                /*"avgVel = (" + 
-                avgVelocityX + ", " + 
-                avgVelocityY + ", " + 
-                avgVelocityZ + "); en_k = " +*/
-                String.format(Locale.GERMANY, "%e", ek)
-        );
-//        velocitiesSum.release();
-        kineticEnergySum.release();
-    }
-
-    private void writePositionsFile(CLBuffer<Float> buffer, CLEvent... events) {
-        if(!shouldStoreFiles) {
-            return;
-        }
-        File resultFile = new File(directoryName, "result" + step + ".csv");
-        try (FileWriter writer = new FileWriter(resultFile)) {
-            Pointer<Float> out = buffer.read(queue, events);
-            Pointer<Integer> typesOut = types.read(queue, events);
-            writer.write("x, y, z, t\n");
-            for (int i = 0; i < numberOfDroplets; i++) {
-                writer.write(out.get(i * VECTOR_SIZE) + SEPARATOR
-                        + out.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                        + out.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                        + typesOut.get(i) + "\n");
-            }
-            out.release();
-            typesOut.release();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
