@@ -42,7 +42,7 @@ public abstract class Simulation {
     public static boolean shouldPrintVelocityProfile;
     public static String resultsDirectoryBase;
     public static int stepDumpThreshold;
-    public static int numberOfAccelerationSteps;
+    public static float accelerationVesselPart;
     public static float accelerationValue;
     
     public static boolean generateRandomPositions;
@@ -90,7 +90,7 @@ public abstract class Simulation {
             radiusIn = Float.parseFloat(prop.getProperty("radiusIn"));
             resultsDirectoryBase = prop.getProperty("resultsDirectoryBase");
             stepDumpThreshold = Integer.parseInt(prop.getProperty("stepDumpThreshold"));
-            numberOfAccelerationSteps = Integer.parseInt(prop.getProperty("numberOfAccelerationSteps"));
+            accelerationVesselPart = Float.parseFloat(prop.getProperty("accelerationVesselPart"));
             accelerationValue = Float.parseFloat(prop.getProperty("accelerationValue"));
             
             baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));

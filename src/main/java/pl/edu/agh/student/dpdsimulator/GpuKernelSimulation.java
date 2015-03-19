@@ -143,7 +143,7 @@ public class GpuKernelSimulation extends Simulation {
                 .deltaTime(deltaTime)
                 .cellRadius(cellRadius)
                 .radiusIn(radiusIn)
-                .numberOfAccelerationSteps(numberOfAccelerationSteps)
+                .accelerationVesselPart(2 * accelerationVesselPart * boxWidth - boxWidth)
                 .accelerationValue(accelerationValue);
     }
 
@@ -288,9 +288,9 @@ public class GpuKernelSimulation extends Simulation {
             float x = positionsPointer.get(i * VECTOR_SIZE);
             float y = positionsPointer.get(i * VECTOR_SIZE + 1);
             float z = positionsPointer.get(i * VECTOR_SIZE + 2);
-            //if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
+            if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
                 buckets[(int)((z + boxSize)/sliceSize)].add(i);
-            //}
+            }
         }
         
         Pointer<Float> velocitiesPointer = velocities.read(queue, events);
