@@ -17,6 +17,8 @@ shouldPrintVelocityProfile=true
 generateRandomPositions=true
 resultsDirectoryBase=../results_
 stepDumpThreshold=100
+numberOfAccelerationSteps=0
+accelerationValue=0.001f
 
 #SIMULATION DATA
 numberOfCellKinds=2

@@ -8,6 +8,8 @@ typedef struct SimulationParameters {
     int numberOfTypes;
     float deltaTime;
     float radiusIn;
+    int numberOfAccelerationSteps;
+    float accelerationValue;
 } SimulationParameters;
 
 typedef struct DropletParameters {
@@ -183,8 +185,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         }
     }
     
-    if(step < 0) {
-        return conservativeForce + dissipativeForce + randomForce + (float3)(0, 0.001, 0);
+    if(step <= simulationParams.numberOfAccelerationSteps) {
+        return conservativeForce + dissipativeForce + randomForce + (float3)(0, simulationParams.accelerationValue, 0);
     }
     return conservativeForce + dissipativeForce + randomForce;
 }

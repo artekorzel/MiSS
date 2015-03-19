@@ -142,7 +142,9 @@ public class GpuKernelSimulation extends Simulation {
                 .maxDropletsPerCell(maxDropletsPerCell)
                 .deltaTime(deltaTime)
                 .cellRadius(cellRadius)
-                .radiusIn(radiusIn);
+                .radiusIn(radiusIn)
+                .numberOfAccelerationSteps(numberOfAccelerationSteps)
+                .accelerationValue(accelerationValue);
     }
 
     private void initStates() {
