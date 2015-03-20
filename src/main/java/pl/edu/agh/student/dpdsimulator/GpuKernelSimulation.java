@@ -11,6 +11,9 @@ import com.nativelibs4java.opencl.util.ReductionUtils;
 import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
 import java.io.File;
 import java.io.FileWriter;
+import static java.nio.file.Files.copy;
+import java.nio.file.Path;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
@@ -111,7 +114,8 @@ public class GpuKernelSimulation extends Simulation {
         }
         long endTime = System.nanoTime();
         System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
-        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);        
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);   
+        copy(new File("simulation.data").toPath(), new File(directoryName + "/simulation.data").toPath(), REPLACE_EXISTING);
         printVelocityProfile(positions, velocities);
     }
     
