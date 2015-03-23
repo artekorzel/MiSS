@@ -26,6 +26,7 @@ import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 public class GpuKernelSimulation extends Simulation {
     
     private static final String SEPARATOR = ",";
+    private static final String PSISEPARATOR = " ";
     
     private String directoryName;
     
@@ -84,7 +85,7 @@ public class GpuKernelSimulation extends Simulation {
         
         dpdKernel = new Dpd(context);
 
-        if(!shouldStoreFiles) {
+        if(!(shouldStoreCSVFiles || shouldStorePSIFiles)) {
             return;
         }
         directoryName = resultsDirectoryBase + new Date().getTime();
@@ -249,31 +250,59 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
-        if(!shouldStoreFiles || step % stepDumpThreshold != 0) {
+        if(!(shouldStoreCSVFiles || shouldStorePSIFiles) || step % stepDumpThreshold != 0) {
             return;
         }
-        File resultFile = new File(directoryName, "result" + step + ".csv");
-        try (FileWriter writer = new FileWriter(resultFile)) {
-            Pointer<Float> positionsOut = positions.read(queue, events);
-            Pointer<Float> velocitiesOut = velocities.read(queue, events);
-            Pointer<Integer> typesOut = types.read(queue, events);
-            writer.write("x,y,z,vx,vy,vz,t\n");
-            for (int i = 0; i < numberOfDroplets; i++) {
-                writer.write(
-                        positionsOut.get(i * VECTOR_SIZE) + SEPARATOR
-                        + positionsOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                        + positionsOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                        + velocitiesOut.get(i * VECTOR_SIZE) + SEPARATOR
-                        + velocitiesOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                        + velocitiesOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                        + typesOut.get(i) + "\n");
+        
+        if(shouldStoreCSVFiles){
+            File resultFile = new File(directoryName, "result" + step + ".csv");
+            try (FileWriter writer = new FileWriter(resultFile)) {
+                Pointer<Float> positionsOut = positions.read(queue, events);
+                Pointer<Float> velocitiesOut = velocities.read(queue, events);
+                Pointer<Integer> typesOut = types.read(queue, events);
+                writer.write("x,y,z,vx,vy,vz,t\n");
+                for (int i = 0; i < numberOfDroplets; i++) {
+                    writer.write(
+                            positionsOut.get(i * VECTOR_SIZE) + SEPARATOR
+                            + positionsOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                            + positionsOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE) + SEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
+                            + typesOut.get(i) + "\n");
+                }
+                positionsOut.release();
+                velocitiesOut.release();
+                typesOut.release();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            positionsOut.release();
-            velocitiesOut.release();
-            typesOut.release();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
+        
+        if(shouldStorePSIFiles){
+            File resultFile = new File(directoryName, "result" + step + ".psi");
+            try (FileWriter writer = new FileWriter(resultFile)) {
+                Pointer<Float> positionsOut = positions.read(queue, events);
+                Pointer<Float> velocitiesOut = velocities.read(queue, events);
+                Pointer<Integer> typesOut = types.read(queue, events);
+                writer.write(psiHeaderBegining + numberOfDroplets + psiHeaderEnd);
+                for (int i = 0; i < numberOfDroplets; i++) {
+                    writer.write(
+                            positionsOut.get(i * VECTOR_SIZE) + PSISEPARATOR
+                            + positionsOut.get(i * VECTOR_SIZE + 1) + PSISEPARATOR
+                            + positionsOut.get(i * VECTOR_SIZE + 2) + PSISEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE) + PSISEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE + 1) + PSISEPARATOR
+                            + velocitiesOut.get(i * VECTOR_SIZE + 2) + PSISEPARATOR
+                            + typesOut.get(i) + "\n");
+                }
+                positionsOut.release();
+                velocitiesOut.release();
+                typesOut.release();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }        
     }
 
     private void printVelocityProfile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {

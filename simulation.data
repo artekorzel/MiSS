@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=300000
+numberOfSteps=10000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
@@ -10,7 +10,8 @@ radiusIn=0.8f
 maxDropletsPerCell=21
 averageDropletsPerCell=4
 numberOfDroplets=16000
-shouldStoreFiles=true
+shouldStoreCSVFiles=false
+shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
 shouldPrintKineticEnergy=false
 shouldPrintVelocityProfile=true

@@ -12,6 +12,30 @@ public abstract class Simulation {
     public static final double NANOS_IN_SECOND = 1000000000.0;
     public static final int numberOfCellNeighbours = 27;
     public static final String dataFileName = "simulation.data";
+    public static final String psiHeaderBegining =  "# PSI Format 1.0\n" +
+                                                    "#\n" +
+                                                    "# column[0] = \"x\"\n" +
+                                                    "# column[1] = \"y\"\n" +
+                                                    "# column[2] = \"z\"\n" +
+                                                    "# column[3] = \"vx\"\n" +
+                                                    "# column[4] = \"vy\"\n" +
+                                                    "# column[5] = \"vz\"\n" +
+                                                    "# column[6] = \"t\"\n" +
+                                                    "#\n" +
+                                                    "# symbol[3] = \"VX\"\n" +
+                                                    "# symbol[4] = \"VY\"\n" +
+                                                    "# symbol[5] = \"VZ\"\n" +
+                                                    "# symbol[6] = \"T\"\n" +
+                                                    "#\n" +
+                                                    "# type[3] = float\n" +
+                                                    "# type[4] = float\n" +
+                                                    "# type[5] = float \n" +
+                                                    "# type[6] = int\n" +
+                                                    "\n";
+    public static String psiHeaderEnd =     " 2694 115001\n" +
+                                            "1.00 0.00 0.00\n" +
+                                            "0.00 1.00 0.00\n" +
+                                            "0.00 0.00 1.00\n\n";
      
     public static int numberOfSteps;    
     public static float deltaTime;
@@ -36,7 +60,8 @@ public abstract class Simulation {
     public static int averageDropletsPerCell;
     public static int numberOfCellKinds;
     
-    public static boolean shouldStoreFiles;
+    public static boolean shouldStoreCSVFiles;
+    public static boolean shouldStorePSIFiles;
     public static boolean shouldPrintAvgVelocity;
     public static boolean shouldPrintKineticEnergy;
     public static boolean shouldPrintVelocityProfile;
@@ -72,7 +97,8 @@ public abstract class Simulation {
         try{
             Properties prop = getProperties(fileName);
 
-            shouldStoreFiles = Boolean.parseBoolean(prop.getProperty("shouldStoreFiles"));
+            shouldStoreCSVFiles = Boolean.parseBoolean(prop.getProperty("shouldStoreCSVFiles"));
+            shouldStorePSIFiles = Boolean.parseBoolean(prop.getProperty("shouldStorePSIFiles"));
             shouldPrintAvgVelocity = Boolean.parseBoolean(prop.getProperty("shouldPrintAvgVelocity"));
             shouldPrintKineticEnergy = Boolean.parseBoolean(prop.getProperty("shouldPrintKineticEnergy"));
             shouldPrintVelocityProfile = Boolean.parseBoolean(prop.getProperty("shouldPrintVelocityProfile"));
