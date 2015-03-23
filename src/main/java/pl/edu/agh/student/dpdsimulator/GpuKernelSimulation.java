@@ -12,7 +12,6 @@ import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
 import java.io.File;
 import java.io.FileWriter;
 import static java.nio.file.Files.copy;
-import java.nio.file.Path;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.util.Date;
 import java.util.HashSet;
@@ -59,7 +58,6 @@ public class GpuKernelSimulation extends Simulation {
         float sizeScale = numberOfDroplets / (float)baseNumberOfDroplets;        
         boxSize = (float)Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
-        radiusIn = boxSize * 0.8f;
         numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
         
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
@@ -148,7 +146,9 @@ public class GpuKernelSimulation extends Simulation {
                 .cellRadius(cellRadius)
                 .radiusIn(radiusIn)
                 .accelerationVesselPart(2 * accelerationVesselPart * boxWidth - boxWidth)
-                .accelerationValue(accelerationValue);
+                .accelerationValue(accelerationValue)
+                .averageDropletDistance(averageDropletDistance)
+                .shouldSimulateVesselDroplets(shouldSimulateVesselDroplets);
     }
 
     private void initStates() {
