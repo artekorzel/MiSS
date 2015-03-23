@@ -239,12 +239,24 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     if (dropletId >= simulationParams.numberOfDroplets) {
         return;
     }
+        
+    float averageDropletDistance = 0.5f;
+    float boxSize = simulationParams.boxSize;
+    float boxWidth = simulationParams.boxWidth;
     
+    int numberOfDropletsPerXZDim = ceil(2 * boxSize / averageDropletDistance);
+    int numberOfDropletsPerYDim = ceil(2 * boxWidth / averageDropletDistance);
+    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXZDim * numberOfDropletsPerYDim;
+    
+    int dropletIdPartX = dropletId % numberOfDropletsPerXZDim;
+    int dropletIdPartY = (dropletId / numberOfDropletsPerXZDim) % numberOfDropletsPerYDim;
+    int dropletIdPartZ = dropletId / squareOfNumberOfDropletsPerDim;
+
     int seed = states[dropletId];   
     
-    float x = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
-    float y = (rand(&seed, 1) * 2 - 1) * simulationParams.boxWidth;
-    float z = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
+    float x = dropletIdPartX * averageDropletDistance - boxSize;
+    float y = dropletIdPartY * averageDropletDistance - boxWidth;
+    float z = dropletIdPartZ * averageDropletDistance - boxSize;
     
     float distanceFromY = sqrt(x * x + z * z);
     if (distanceFromY >= simulationParams.radiusIn) {
