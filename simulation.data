@@ -9,7 +9,6 @@ initBoxWidth=8f
 averageDropletDistance=0.5f
 radiusIn=3.24f
 maxDropletsPerCell=21
-averageDropletsPerCell=4
 numberOfDroplets=16000
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
