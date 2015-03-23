@@ -10,6 +10,8 @@ typedef struct SimulationParameters {
     float radiusIn;
     float accelerationVesselPart;
     float accelerationValue;
+    float averageDropletDistance;
+    bool shouldSimulateVesselDroplets;
 } SimulationParameters;
 
 typedef struct DropletParameters {
@@ -131,17 +133,23 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
         SimulationParameters simulationParams, int dropletId, int step) {
             
+    int dropletType = types[dropletId];
+        
+    if(!simulationParams.shouldSimulateVesselDroplets
+            && dropletType == 0) {
+        return (float3)(0.0, 0.0, 0.0);
+    }
+    
     float cellRadius = simulationParams.cellRadius;
     float boxSize = simulationParams.boxSize;
     float boxWidth = simulationParams.boxWidth;
     int maxDropletsPerCell = simulationParams.maxDropletsPerCell;
     int numberOfTypes = simulationParams.numberOfTypes;
-    
+        
     float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
     float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
     float3 randomForce = (float3)(0.0, 0.0, 0.0);
-
-    int dropletType = types[dropletId];
+    
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];    
     int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize, boxWidth);
@@ -219,6 +227,11 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
         return;
     }
     
+    if(!simulationParams.shouldSimulateVesselDroplets 
+            && types[dropletId] == 0) {
+        return;
+    }
+
     float deltaTime = simulationParams.deltaTime;
     
     float3 dropletVelocity = velocities[dropletId];
@@ -240,7 +253,7 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
         return;
     }
         
-    float averageDropletDistance = 0.5f;
+    float averageDropletDistance = simulationParams.averageDropletDistance;
     float boxSize = simulationParams.boxSize;
     float boxWidth = simulationParams.boxWidth;
     
@@ -251,13 +264,12 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     int dropletIdPartX = dropletId % numberOfDropletsPerXZDim;
     int dropletIdPartY = (dropletId / numberOfDropletsPerXZDim) % numberOfDropletsPerYDim;
     int dropletIdPartZ = dropletId / squareOfNumberOfDropletsPerDim;
-
+    
+    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSize;
+    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxWidth;
+    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSize;
+    
     int seed = states[dropletId];   
-    
-    float x = dropletIdPartX * averageDropletDistance - boxSize;
-    float y = dropletIdPartY * averageDropletDistance - boxWidth;
-    float z = dropletIdPartZ * averageDropletDistance - boxSize;
-    
     float distanceFromY = sqrt(x * x + z * z);
     if (distanceFromY >= simulationParams.radiusIn) {
         types[dropletId] = 0;
@@ -279,13 +291,24 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
     if (dropletId >= simulationParams.numberOfDroplets) {
         return;
     }
+        
+    float averageDropletDistance = simulationParams.averageDropletDistance;
+    float boxSize = simulationParams.boxSize;
+    float boxWidth = simulationParams.boxWidth;
+    
+    int numberOfDropletsPerXZDim = ceil(2 * boxSize / averageDropletDistance);
+    int numberOfDropletsPerYDim = ceil(2 * boxWidth / averageDropletDistance);
+    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXZDim * numberOfDropletsPerYDim;
+    
+    int dropletIdPartX = dropletId % numberOfDropletsPerXZDim;
+    int dropletIdPartY = (dropletId / numberOfDropletsPerXZDim) % numberOfDropletsPerYDim;
+    int dropletIdPartZ = dropletId / squareOfNumberOfDropletsPerDim;
+    
+    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSize;
+    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxWidth;
+    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSize;
     
     int seed = states[dropletId];   
-    
-    float x = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
-    float y = (rand(&seed, 1) * 2 - 1) * simulationParams.boxWidth;
-    float z = (rand(&seed, 1) * 2 - 1) * simulationParams.boxSize;
-    
     float interval = 1.0f / simulationParams.numberOfTypes;
     float randomNum = rand(&seed, 1);
     types[dropletId] = (int)(randomNum / interval);    

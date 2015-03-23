@@ -51,13 +51,12 @@ public abstract class Simulation {
         
     public static float cellRadius;
     public static int baseNumberOfCells;
-    public static int baseNumberOfDroplets;    
+    public static int baseNumberOfDroplets;
+    public static float averageDropletDistance;
     
     public static int numberOfCells;
     public static int numberOfDroplets;
-    public static float numberOfDropletsFactor;
     public static int maxDropletsPerCell;
-    public static int averageDropletsPerCell;
     public static int numberOfCellKinds;
     
     public static boolean shouldStoreCSVFiles;
@@ -65,6 +64,7 @@ public abstract class Simulation {
     public static boolean shouldPrintAvgVelocity;
     public static boolean shouldPrintKineticEnergy;
     public static boolean shouldPrintVelocityProfile;
+    public static boolean shouldSimulateVesselDroplets;
     public static String resultsDirectoryBase;
     public static int stepDumpThreshold;
     public static float accelerationVesselPart;
@@ -109,8 +109,8 @@ public abstract class Simulation {
             initBoxWidth = Float.parseFloat(prop.getProperty("initBoxWidth"));
             boxSizeScale = Float.parseFloat(prop.getProperty("boxSizeScale"));
             boxWidthScale = Float.parseFloat(prop.getProperty("boxWidthScale"));
+            averageDropletDistance = Float.parseFloat(prop.getProperty("averageDropletDistance"));
             maxDropletsPerCell = Integer.parseInt(prop.getProperty("maxDropletsPerCell"));
-            averageDropletsPerCell = Integer.parseInt(prop.getProperty("averageDropletsPerCell"));
             numberOfDroplets = Integer.parseInt(prop.getProperty("numberOfDroplets"));
             generateRandomPositions = Boolean.parseBoolean(prop.getProperty("generateRandomPositions"));
             radiusIn = Float.parseFloat(prop.getProperty("radiusIn"));
@@ -118,9 +118,10 @@ public abstract class Simulation {
             stepDumpThreshold = Integer.parseInt(prop.getProperty("stepDumpThreshold"));
             accelerationVesselPart = Float.parseFloat(prop.getProperty("accelerationVesselPart"));
             accelerationValue = Float.parseFloat(prop.getProperty("accelerationValue"));
+            shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
             
             baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
-            baseNumberOfDroplets = baseNumberOfCells * averageDropletsPerCell;
+            baseNumberOfDroplets = 32768;//baseNumberOfCells * averageDropletsPerCell;
         } catch (Exception e){
             e.printStackTrace();
         }
