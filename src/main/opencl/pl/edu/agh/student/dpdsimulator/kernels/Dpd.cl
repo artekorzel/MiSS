@@ -216,9 +216,8 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
 }
 
 kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
-        global float3* forces, global float3* newPositions, global float3* newVelocities, global int* types, 
-        constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        constant SimulationParameters* simulationParameters) {
+        global float3* forces, global int* types, constant PairParameters* pairParams, 
+        constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters) {
 
     SimulationParameters simulationParams = simulationParameters[0];
     
@@ -229,8 +228,6 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     
     if(!simulationParams.shouldSimulateVesselDroplets 
             && types[dropletId] == 0) {
-        newPositions[dropletId] = positions[dropletId];    
-        newVelocities[dropletId] = velocities[dropletId];
         return;
     }
 
@@ -241,8 +238,8 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     float dropletMass = dropletParams[types[dropletId]].mass;
 
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;
-    newPositions[dropletId] = normalizePosition(newPosition, simulationParams.boxSize, simulationParams.boxWidth);    
-    newVelocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / dropletMass;
+    positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSize, simulationParams.boxWidth);    
+    velocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / dropletMass;
 }
 
 kernel void generateTube(global float3* vector, global int* types, global int* states, 

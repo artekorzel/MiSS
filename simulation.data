@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=1000000
+numberOfSteps=100000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
