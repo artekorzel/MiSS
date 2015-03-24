@@ -12,6 +12,7 @@ public abstract class Simulation {
     public static final double NANOS_IN_SECOND = 1000000000.0;
     public static final int numberOfCellNeighbours = 27;
     public static final String dataFileName = "simulation.data";
+    public static final String csvHeader = "x,y,z,vx,vy,vz,t\n";
     public static final String psiHeaderBegining =  "# PSI Format 1.0\n" +
                                                     "#\n" +
                                                     "# column[0] = \"x\"\n" +
@@ -69,6 +70,7 @@ public abstract class Simulation {
     public static int stepDumpThreshold;
     public static float accelerationVesselPart;
     public static float accelerationValue;
+    public static int accelerationVeselSteps;
     
     public static boolean generateRandomPositions;
     protected Pointer<Dpd.DropletParameters> dropletParametersPointer;
@@ -118,6 +120,7 @@ public abstract class Simulation {
             stepDumpThreshold = Integer.parseInt(prop.getProperty("stepDumpThreshold"));
             accelerationVesselPart = Float.parseFloat(prop.getProperty("accelerationVesselPart"));
             accelerationValue = Float.parseFloat(prop.getProperty("accelerationValue"));
+            accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
             
             baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));

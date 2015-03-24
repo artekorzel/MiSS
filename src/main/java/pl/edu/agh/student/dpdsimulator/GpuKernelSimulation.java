@@ -24,7 +24,7 @@ import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public class GpuKernelSimulation extends Simulation {
     
-    private static final String SEPARATOR = ",";
+    private static final String CSVSEPARATOR = ",";
     private static final String PSISEPARATOR = " ";
     
     private String directoryName;
@@ -142,6 +142,7 @@ public class GpuKernelSimulation extends Simulation {
                 .accelerationVesselPart(2 * accelerationVesselPart * boxWidth - boxWidth)
                 .accelerationValue(accelerationValue)
                 .averageDropletDistance(averageDropletDistance)
+                .accelerationVeselSteps(accelerationVeselSteps)
                 .shouldSimulateVesselDroplets(shouldSimulateVesselDroplets);
     }
 
@@ -209,8 +210,8 @@ public class GpuKernelSimulation extends Simulation {
         float avgVelocityY = velocitiesSumY / numberOfDroplets;
         float avgVelocityZ = velocitiesSumZ / numberOfDroplets;
         System.out.println("avgVelocity=" 
-                + avgVelocityX + SEPARATOR
-                + avgVelocityY + SEPARATOR 
+                + avgVelocityX + CSVSEPARATOR
+                + avgVelocityY + CSVSEPARATOR 
                 + avgVelocityZ);
         velocitiesOut.release();
     }
@@ -227,63 +228,46 @@ public class GpuKernelSimulation extends Simulation {
         kineticEnergySum.release();
     }
 
-    private void writeDataFile(CLEvent... events) {
-        if(!(shouldStoreCSVFiles || shouldStorePSIFiles) || step % stepDumpThreshold != 0) {
-            return;
-        }
-        
+    private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
         if(shouldStoreCSVFiles){
-            File resultFile = new File(directoryName, "result" + step + ".csv");
-            try (FileWriter writer = new FileWriter(resultFile)) {
-                Pointer<Float> positionsOut = positions.read(queue, events);
-                Pointer<Float> velocitiesOut = velocities.read(queue, events);
-                Pointer<Integer> typesOut = types.read(queue, events);
-                writer.write("x,y,z,vx,vy,vz,t\n");
-                for (int i = 0; i < numberOfDroplets; i++) {
-                    writer.write(
-                            positionsOut.get(i * VECTOR_SIZE) + SEPARATOR
-                            + positionsOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                            + positionsOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE) + SEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE + 1) + SEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE + 2) + SEPARATOR
-                            + typesOut.get(i) + "\n");
-                }
-                positionsOut.release();
-                velocitiesOut.release();
-                typesOut.release();
-            } catch (Exception e) {
-                e.printStackTrace();
+            writeDataFile(positions, velocities, csvHeader, CSVSEPARATOR, ".csv");
+        }
+        if(shouldStorePSIFiles){
+            final String psiHeader = psiHeaderBegining + numberOfDroplets + psiHeaderEnd;
+            writeDataFile(positions, velocities, psiHeader, PSISEPARATOR, ".psi");
+        }
+    }
+    
+    private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, String header, String separator, String fileExtension, CLEvent... events) {
+        if(step % stepDumpThreshold != 0) {
+            return;
+        }                
+        File resultFile = new File(directoryName, "result" + step + fileExtension);
+        try (FileWriter writer = new FileWriter(resultFile)) {
+            Pointer<Float> positionsOut = positions.read(queue, events);
+            Pointer<Float> velocitiesOut = velocities.read(queue, events);
+            Pointer<Integer> typesOut = types.read(queue, events);
+            writer.write(header);
+            for (int i = 0; i < numberOfDroplets; i++) {
+                writer.write(
+                        positionsOut.get(i * VECTOR_SIZE) + separator
+                        + positionsOut.get(i * VECTOR_SIZE + 1) + separator
+                        + positionsOut.get(i * VECTOR_SIZE + 2) + separator
+                        + velocitiesOut.get(i * VECTOR_SIZE) + separator
+                        + velocitiesOut.get(i * VECTOR_SIZE + 1) + separator
+                        + velocitiesOut.get(i * VECTOR_SIZE + 2) + separator
+                        + typesOut.get(i) + "\n");
             }
+            positionsOut.release();
+            velocitiesOut.release();
+            typesOut.release();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         
-        if(shouldStorePSIFiles){
-            File resultFile = new File(directoryName, "result" + step + ".psi");
-            try (FileWriter writer = new FileWriter(resultFile)) {
-                Pointer<Float> positionsOut = positions.read(queue, events);
-                Pointer<Float> velocitiesOut = velocities.read(queue, events);
-                Pointer<Integer> typesOut = types.read(queue, events);
-                writer.write(psiHeaderBegining + numberOfDroplets + psiHeaderEnd);
-                for (int i = 0; i < numberOfDroplets; i++) {
-                    writer.write(
-                            positionsOut.get(i * VECTOR_SIZE) + PSISEPARATOR
-                            + positionsOut.get(i * VECTOR_SIZE + 1) + PSISEPARATOR
-                            + positionsOut.get(i * VECTOR_SIZE + 2) + PSISEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE) + PSISEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE + 1) + PSISEPARATOR
-                            + velocitiesOut.get(i * VECTOR_SIZE + 2) + PSISEPARATOR
-                            + typesOut.get(i) + "\n");
-                }
-                positionsOut.release();
-                velocitiesOut.release();
-                typesOut.release();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }        
-    }
-
-    private void printVelocityProfile(CLEvent... events) {
+    }    
+    
+    private void printVelocityProfile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
         if(!shouldPrintVelocityProfile) {
             return;
         }

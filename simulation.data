@@ -13,14 +13,15 @@ numberOfDroplets=16384
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
-shouldPrintKineticEnergy=true
-shouldPrintVelocityProfile=true
+shouldPrintKineticEnergy=false
+shouldPrintVelocityProfile=false
 generateRandomPositions=false
 resultsDirectoryBase=../results_
-stepDumpThreshold=10000
+stepDumpThreshold=5000
 accelerationVesselPart=0.2f
 accelerationValue=0.0005f
-shouldSimulateVesselDroplets=false
+accelerationVeselSteps=200000
+shouldSimulateVesselDroplets=true
 
 #SIMULATION DATA
 numberOfCellKinds=2

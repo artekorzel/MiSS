@@ -10,6 +10,7 @@ typedef struct SimulationParameters {
     float radiusIn;
     float accelerationVesselPart;
     float accelerationValue;
+    int accelerationVeselSteps;
     float averageDropletDistance;
     bool shouldSimulateVesselDroplets;
 } SimulationParameters;
@@ -194,7 +195,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     }
     
     if(dropletType != 0 
-            && dropletPosition.y < simulationParams.accelerationVesselPart) {
+            && dropletPosition.y < simulationParams.accelerationVesselPart && step < simulationParams.accelerationVeselSteps) {
         return conservativeForce + dissipativeForce + randomForce + (float3)(0, simulationParams.accelerationValue, 0);
     }
     return conservativeForce + dissipativeForce + randomForce;
