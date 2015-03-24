@@ -228,17 +228,17 @@ public class GpuKernelSimulation extends Simulation {
         kineticEnergySum.release();
     }
 
-    private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+    private void writeDataFile(CLEvent... events) {
         if(shouldStoreCSVFiles){
-            writeDataFile(positions, velocities, csvHeader, CSVSEPARATOR, ".csv");
+            writeDataFile(csvHeader, CSVSEPARATOR, ".csv", events);
         }
         if(shouldStorePSIFiles){
             final String psiHeader = psiHeaderBegining + numberOfDroplets + psiHeaderEnd;
-            writeDataFile(positions, velocities, psiHeader, PSISEPARATOR, ".psi");
+            writeDataFile(psiHeader, PSISEPARATOR, ".psi", events);
         }
     }
     
-    private void writeDataFile(CLBuffer<Float> positions, CLBuffer<Float> velocities, String header, String separator, String fileExtension, CLEvent... events) {
+    private void writeDataFile(String header, String separator, String fileExtension, CLEvent... events) {
         if(step % stepDumpThreshold != 0) {
             return;
         }                
@@ -267,7 +267,7 @@ public class GpuKernelSimulation extends Simulation {
         
     }    
     
-    private void printVelocityProfile(CLBuffer<Float> positions, CLBuffer<Float> velocities, CLEvent... events) {
+    private void printVelocityProfile(CLEvent... events) {
         if(!shouldPrintVelocityProfile) {
             return;
         }
