@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=200000
+numberOfSteps=10000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
@@ -17,7 +17,7 @@ shouldPrintKineticEnergy=false
 shouldPrintVelocityProfile=false
 generateRandomPositions=false
 resultsDirectoryBase=../results_
-stepDumpThreshold=10000
+stepDumpThreshold=5000
 accelerationVesselPart=0.2f
 accelerationValue=0.0005f
 accelerationVeselSteps=200000
