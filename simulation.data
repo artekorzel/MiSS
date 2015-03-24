@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=100000
+numberOfSteps=1000000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
@@ -9,15 +9,15 @@ initBoxWidth=8f
 averageDropletDistance=0.5f
 radiusIn=3.24f
 maxDropletsPerCell=21
-numberOfDroplets=16000
+numberOfDroplets=16384
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
-shouldPrintKineticEnergy=false
+shouldPrintKineticEnergy=true
 shouldPrintVelocityProfile=true
 generateRandomPositions=false
 resultsDirectoryBase=../results_
-stepDumpThreshold=5000
+stepDumpThreshold=10000
 accelerationVesselPart=0.2f
 accelerationValue=0.0005f
 shouldSimulateVesselDroplets=false

@@ -229,6 +229,8 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     
     if(!simulationParams.shouldSimulateVesselDroplets 
             && types[dropletId] == 0) {
+        newPositions[dropletId] = positions[dropletId];    
+        newVelocities[dropletId] = velocities[dropletId];
         return;
     }
 
@@ -238,7 +240,7 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     float3 dropletForce = forces[dropletId];
     float dropletMass = dropletParams[types[dropletId]].mass;
 
-    float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;            
+    float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;
     newPositions[dropletId] = normalizePosition(newPosition, simulationParams.boxSize, simulationParams.boxWidth);    
     newVelocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / dropletMass;
 }
