@@ -103,27 +103,27 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
         int3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
 
         if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ - 1) {
-            position.x -= boxSize;
+            position.x -= 2 * boxSize;
         }
         
         if(dropletCellCoordinates.x == cellsNoXZ - 1 && neighbourCellCoordinates.x == 0) {
-            position.x += boxSize;
+            position.x += 2 * boxSize;
         }
         
         if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY - 1) {
-            position.y -= boxWidth;
+            position.y -= 2 * boxWidth;
         }
         
         if(dropletCellCoordinates.y == cellsNoY - 1 && neighbourCellCoordinates.y == 0) {
-            position.y += boxWidth;
+            position.y += 2 * boxWidth;
         }
         
         if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ - 1) {
-            position.z -= boxSize;
+            position.z -= 2 * boxSize;
         }
         
         if(dropletCellCoordinates.z == cellsNoXZ - 1 && neighbourCellCoordinates.z == 0) {
-            position.z += boxSize;
+            position.z += 2 * boxSize;
         }
     }
     
