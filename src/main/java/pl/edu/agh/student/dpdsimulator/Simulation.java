@@ -11,6 +11,10 @@ public abstract class Simulation {
     public static final int VECTOR_SIZE = 4;
     public static final double NANOS_IN_SECOND = 1000000000.0;
     public static final int numberOfCellNeighbours = 27;
+    public static final int reductionLocalSize = 16;
+    public static final int numberOfReductionGroups = 32;
+    public static final int reductionSize = reductionLocalSize * numberOfReductionGroups;
+    
     public static final String dataFileName = "simulation.data";
     public static final String csvHeader = "x,y,z,vx,vy,vz,t\n";
     public static final String psiHeaderBegining =  "# PSI Format 1.0\n" +
@@ -124,7 +128,7 @@ public abstract class Simulation {
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
             
             baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
-            baseNumberOfDroplets = 32768;//baseNumberOfCells * averageDropletsPerCell;
+            baseNumberOfDroplets = 32768;
         } catch (Exception e){
             e.printStackTrace();
         }

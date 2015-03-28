@@ -99,3 +99,31 @@ typedef struct TestStruct {
 kernel void test3(constant TestStruct *aStruct, global float* out) {
     out[0] = aStruct->mass;
 }
+
+kernel void reduction(global float* data, local float* partialSums, global float* output, int dataLength) {
+
+    int local_id = get_local_id(0);
+    int global_id = get_global_id(0);
+    int global_size = get_global_size(0);
+    int local_size = get_local_size(0);
+    int group_id = get_group_id(0);
+    
+    float localResult = 0;
+    while (global_id < dataLength) {
+        localResult += data[global_id];
+        global_id += global_size;
+    }
+    
+    partialSums[local_id] = localResult;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    int offset;
+    for(offset = local_size/2; offset > 0; offset >>= 1){
+        if(local_id < offset){
+            partialSums[local_id] += partialSums[local_id + offset];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    if(local_id == 0){
+        output[group_id] = partialSums[0];
+    }
+}

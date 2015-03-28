@@ -6,9 +6,7 @@ import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
-import com.nativelibs4java.opencl.util.OpenCLType;
-import com.nativelibs4java.opencl.util.ReductionUtils;
-import com.nativelibs4java.opencl.util.ReductionUtils.Reductor;
+import com.nativelibs4java.opencl.LocalSize;
 import java.io.File;
 import java.io.FileWriter;
 import static java.nio.file.Files.copy;
@@ -44,9 +42,9 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Integer> types;
     private CLBuffer<Dpd.SimulationParameters> simulationParameters;
     private CLBuffer<Dpd.DropletParameters> dropletParameters;
-    private CLBuffer<Dpd.PairParameters> pairParameters;    
-    private Reductor<Float> sumator;
-    private CLBuffer<Float> velocitiesEnergy;
+    private CLBuffer<Dpd.PairParameters> pairParameters;
+    private CLBuffer<Float> partialEnergy;
+    private CLBuffer<Float> partialAverageVelocity;
     
     @Override
     public void initData() throws Exception {
@@ -71,9 +69,10 @@ public class GpuKernelSimulation extends Simulation {
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);     
-        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);   
-        velocitiesEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
-        sumator = ReductionUtils.createReductor(context, ReductionUtils.Operation.Add, OpenCLType.Float, 1);
+        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
+        partialEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfReductionGroups);
+        partialAverageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, 
+                numberOfReductionGroups * VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
 
@@ -199,33 +198,41 @@ public class GpuKernelSimulation extends Simulation {
         if(!shouldPrintAvgVelocity) {
             return;
         }
-        Pointer<Float> velocitiesOut = velocities.read(queue, events);
-        float velocitiesSumX = 0f, velocitiesSumY = 0f, velocitiesSumZ = 0f;
-        for(int i = 0; i < numberOfDroplets; ++i) {
-            velocitiesSumX += velocitiesOut.get(i * VECTOR_SIZE);
-            velocitiesSumY += velocitiesOut.get(i * VECTOR_SIZE + 1);
-            velocitiesSumZ += velocitiesOut.get(i * VECTOR_SIZE + 2);
-        }
-        float avgVelocityX = velocitiesSumX / numberOfDroplets;
-        float avgVelocityY = velocitiesSumY / numberOfDroplets;
-        float avgVelocityZ = velocitiesSumZ / numberOfDroplets;
+        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities, 
+                LocalSize.ofFloatArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
+                simulationParameters, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
+        Pointer<Float> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);
+        float avgVelocityX = 0, avgVelocityY = 0, avgVelocityZ = 0;
+        for(int i = 0; i < numberOfReductionGroups; ++i) {
+            avgVelocityX += avgVelocity.get(i * VECTOR_SIZE);
+            avgVelocityY += avgVelocity.get(i * VECTOR_SIZE + 1);
+            avgVelocityZ += avgVelocity.get(i * VECTOR_SIZE + 2);
+        }        
+        avgVelocityX /= numberOfDroplets;
+        avgVelocityY /= numberOfDroplets;
+        avgVelocityZ /= numberOfDroplets;
         System.out.println("avgVelocity=" 
                 + avgVelocityX + CSVSEPARATOR
                 + avgVelocityY + CSVSEPARATOR 
                 + avgVelocityZ);
-        velocitiesOut.release();
+        avgVelocity.release();
     }
 
     private void printKineticEnergy(CLEvent... events) {
         if(!shouldPrintKineticEnergy) {
             return;
         }        
-        CLEvent reductionEvent = dpdKernel.calculateVelocitiesEnergy(queue, velocities, velocitiesEnergy, 
-                simulationParameters, new int[]{numberOfDroplets}, null, events);
-        Pointer<Float> kineticEnergySum = sumator.reduce(queue, velocitiesEnergy, reductionEvent);
-        float ek = kineticEnergySum.get(0) / numberOfDroplets;
+        CLEvent reductionEvent = dpdKernel.calculateVelocitiesEnergy(queue, velocities, 
+                LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, simulationParameters, 
+                new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
+        Pointer<Float> partialEnergyPointer = partialEnergy.read(queue, reductionEvent);
+        float ek = 0;
+        for(float energy : partialEnergyPointer.getFloats()) {
+            ek += energy;
+        }
+        ek /= numberOfDroplets;
         System.out.println("Ek=" + String.format(Locale.GERMANY, "%e", ek));
-        kineticEnergySum.release();
+        partialEnergyPointer.release();
     }
 
     private void writeDataFile(CLEvent... events) {

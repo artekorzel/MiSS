@@ -330,18 +330,65 @@ kernel void generateVelocities(global float3* velocities, global int* states, gl
     velocities[dropletId] = (float3) (0, 0, 0);
 }
 
-kernel void calculateVelocitiesEnergy(global float3* velocities, global float* energy, 
-        constant SimulationParameters* simulationParameters) {
+kernel void calculateAverageVelocity(global float3* velocities, local float3* partialSums, 
+        global float3* averageVelocity, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
-
+    int numberOfDroplets = simulationParams.numberOfDroplets;
+        
+    int localId = get_local_id(0);
     int globalId = get_global_id(0);
-    if (globalId >= simulationParams.numberOfDroplets) {
-        return;
-    }    
+    int globalSize = get_global_size(0);
+    
+    float3 partialSum = 0;
+    while (globalId < numberOfDroplets) {
+        partialSum += velocities[globalId];
+        globalId += globalSize;
+    }
+    
+    partialSums[localId] = partialSum;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    int offset;
+    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1){
+        if(localId < offset){
+            partialSums[localId] += partialSums[localId + offset];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    if(localId == 0){
+        averageVelocity[get_group_id(0)] = partialSums[0];
+    }
+}
 
-    float3 velocity = velocities[globalId];
-    energy[globalId] = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+kernel void calculateVelocitiesEnergy(global float3* velocities, local float* partialEnergy, 
+        global float* energy, constant SimulationParameters* simulationParameters) {
+            
+    SimulationParameters simulationParams = simulationParameters[0];
+    int numberOfDroplets = simulationParams.numberOfDroplets;
+    
+    int localId = get_local_id(0);
+    int globalId = get_global_id(0);
+    int globalSize = get_global_size(0);
+    
+    float partialSum = 0;
+    while (globalId < numberOfDroplets) {
+        float3 velocity = velocities[globalId];
+        partialSum += velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+        globalId += globalSize;
+    }
+    
+    partialEnergy[localId] = partialSum;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    int offset;
+    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1){
+        if(localId < offset){
+            partialEnergy[localId] += partialEnergy[localId + offset];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    if(localId == 0){
+        energy[get_group_id(0)] = partialEnergy[0];
+    }
 }
 
 kernel void fillCells(global int* cells, global float3* positions, 

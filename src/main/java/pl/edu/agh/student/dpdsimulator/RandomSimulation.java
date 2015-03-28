@@ -6,6 +6,7 @@ import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
+import com.nativelibs4java.opencl.LocalSize;
 import java.io.IOException;
 import java.util.Arrays;
 import org.bridj.Pointer;
@@ -16,17 +17,16 @@ public class RandomSimulation {
     public static void main(String[] args) throws IOException {
         CLContext context = JavaCL.createBestContext();
         CLQueue queue = context.createDefaultQueue();
-                
+        
         RandomCL kernel = new RandomCL(context);
         
-        Pointer<RandomCL.TestStruct> pointer = Pointer.allocate(RandomCL.TestStruct.class);
-        pointer.set(new RandomCL.TestStruct().mass(10));
-        CLBuffer<RandomCL.TestStruct> struct = context.createBuffer(CLMem.Usage.Input, pointer);
-        CLBuffer<Float> res = context.createFloatBuffer(CLMem.Usage.InputOutput, 1);
+        float[] aaa = new float[]{1,2,3,0,3,1,2,0,2,3,1,0};
+        CLBuffer<Float> in = context.createFloatBuffer(CLMem.Usage.InputOutput, Pointer.pointerToFloats(aaa));
+        CLBuffer<Float> out = context.createFloatBuffer(CLMem.Usage.InputOutput, 4);
         
-        CLEvent evt = kernel.test3(queue, struct, res, new int[]{1}, null);
-        float value = res.read(queue, evt).getFloat();
+        CLEvent evt = kernel.reduction(queue, in, LocalSize.ofFloatArray(4), out, 12, new int[]{8}, new int[]{4});
+        final Pointer<Float> read = out.read(queue, evt);
         
-        System.out.println(value);
+        System.out.println(Arrays.toString(read.getFloats()));
     }
 }
