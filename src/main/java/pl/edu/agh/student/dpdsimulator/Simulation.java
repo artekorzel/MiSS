@@ -3,7 +3,6 @@ package pl.edu.agh.student.dpdsimulator;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
-import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
 public abstract class Simulation {
@@ -77,8 +76,8 @@ public abstract class Simulation {
     public static int accelerationVeselSteps;
     
     public static boolean generateRandomPositions;
-    protected Pointer<Dpd.DropletParameters> dropletParametersPointer;
-    protected Pointer<Dpd.PairParameters> pairParametersPointer;
+    public static Dpd.DropletParameters[] dropletParametersArray;
+    public static Dpd.PairParameters[] pairParametersArray;
         
     public abstract void initData() throws Exception;
     
@@ -118,6 +117,7 @@ public abstract class Simulation {
             averageDropletDistance = Float.parseFloat(prop.getProperty("averageDropletDistance"));
             maxDropletsPerCell = Integer.parseInt(prop.getProperty("maxDropletsPerCell"));
             numberOfDroplets = Integer.parseInt(prop.getProperty("numberOfDroplets"));
+            numberOfCellKinds = Integer.parseInt(prop.getProperty("numberOfCellKinds"));
             generateRandomPositions = Boolean.parseBoolean(prop.getProperty("generateRandomPositions"));
             radiusIn = Float.parseFloat(prop.getProperty("radiusIn"));
             resultsDirectoryBase = prop.getProperty("resultsDirectoryBase");
@@ -139,16 +139,14 @@ public abstract class Simulation {
         float[][] cutOffRadius, pi, gamma, sigma;                          
         Properties prop = getProperties(filename);
 
-        numberOfCellKinds = Integer.parseInt(prop.getProperty("numberOfCellKinds"));
-
         mass = new float[numberOfCellKinds];
         for(int i = 0; i < numberOfCellKinds; i++){
             mass[i] = Float.parseFloat(prop.getProperty("mass(" + i + ")"));
         }
-
-        dropletParametersPointer = Pointer.allocateArray(Dpd.DropletParameters.class, numberOfCellKinds);
+        
+        dropletParametersArray = new Dpd.DropletParameters[numberOfCellKinds];
         for(int i = 0; i < numberOfCellKinds; i++){                                
-            dropletParametersPointer.set(i, createDropletParameter(mass[i]));                
+            dropletParametersArray[i] = createDropletParameter(mass[i]);
         }
 
         cutOffRadius = new float[numberOfCellKinds][numberOfCellKinds];
@@ -179,11 +177,10 @@ public abstract class Simulation {
             }
         }
 
-        int counter = 0;            
-        pairParametersPointer = Pointer.allocateArray(Dpd.PairParameters.class, numberOfCellKinds * numberOfCellKinds);
-        for(int i = 0; i < numberOfCellKinds; i++){
-            for(int j = 0; j < numberOfCellKinds; j++){
-                pairParametersPointer.set(counter++, createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]));
+        pairParametersArray = new Dpd.PairParameters[numberOfCellKinds * numberOfCellKinds];
+        for(int i = 0, counter = 0; i < numberOfCellKinds; i++){
+            for(int j = 0; j < numberOfCellKinds; j++, counter++){
+                pairParametersArray[counter] = createPairParameter(cutOffRadius[i][j], pi[i][j], gamma[i][j], sigma[i][j]);
             }
         }
     }

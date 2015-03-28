@@ -282,6 +282,25 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     vector[dropletId] = (float3) (x, y, z);
 }
 
+kernel void countDropletsPerType(global int* types, global int* numberOfDropletsPerType, 
+        constant SimulationParameters* simulationParameters) {
+
+    SimulationParameters simulationParams = simulationParameters[0];
+    
+    int typeId = get_global_id(0);
+    if (typeId >= simulationParams.numberOfTypes) {
+        return;
+    }
+    
+    int i, count = 0, numberOfDroplets = simulationParams.numberOfDroplets;
+    for(i = 0; i < numberOfDroplets; ++i) {
+        if(types[i] == typeId) {
+            ++count;
+        }
+    }
+    numberOfDropletsPerType[typeId] = count;
+}
+
 kernel void generateRandomPositions(global float3* vector, global int* types, global int* states, 
         constant SimulationParameters* simulationParameters) {
             
@@ -311,8 +330,8 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
     int seed = states[dropletId];   
     float interval = 1.0f / simulationParams.numberOfTypes;
     float randomNum = rand(&seed, 1);
-    types[dropletId] = (int)(randomNum / interval);    
-        
+    types[dropletId] = (int)(randomNum / interval);
+
     states[dropletId] = seed;
     vector[dropletId] = (float3) (x, y, z);
 }
@@ -349,19 +368,20 @@ kernel void calculateAverageVelocity(global float3* velocities, local float3* pa
     partialSums[localId] = partialSum;
     barrier(CLK_LOCAL_MEM_FENCE);
     int offset;
-    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1){
+    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1) {
         if(localId < offset){
             partialSums[localId] += partialSums[localId + offset];
         }
         barrier(CLK_LOCAL_MEM_FENCE);
     }
-    if(localId == 0){
+    if(localId == 0) {
         averageVelocity[get_group_id(0)] = partialSums[0];
     }
 }
 
-kernel void calculateVelocitiesEnergy(global float3* velocities, local float* partialEnergy, 
-        global float* energy, constant SimulationParameters* simulationParameters) {
+kernel void calculateKineticEnergy(global float3* velocities, local float* partialEnergy, 
+        global float* energy, global int* types, constant DropletParameters* dropletParameters,
+        constant SimulationParameters* simulationParameters, int type) {
             
     SimulationParameters simulationParams = simulationParameters[0];
     int numberOfDroplets = simulationParams.numberOfDroplets;
@@ -372,22 +392,24 @@ kernel void calculateVelocitiesEnergy(global float3* velocities, local float* pa
     
     float partialSum = 0;
     while (globalId < numberOfDroplets) {
-        float3 velocity = velocities[globalId];
-        partialSum += velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+        if(types[globalId] == type) {
+            float3 velocity = velocities[globalId];
+            partialSum += velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+        }
         globalId += globalSize;
     }
     
     partialEnergy[localId] = partialSum;
     barrier(CLK_LOCAL_MEM_FENCE);
     int offset;
-    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1){
+    for(offset = get_local_size(0)/2; offset > 0; offset >>= 1) {
         if(localId < offset){
             partialEnergy[localId] += partialEnergy[localId + offset];
         }
         barrier(CLK_LOCAL_MEM_FENCE);
     }
-    if(localId == 0){
-        energy[get_group_id(0)] = partialEnergy[0];
+    if(localId == 0) {
+        energy[get_group_id(0)] = partialEnergy[0] * dropletParameters[type].mass;
     }
 }
 
