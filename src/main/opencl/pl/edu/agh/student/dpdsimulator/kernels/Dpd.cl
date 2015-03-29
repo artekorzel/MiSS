@@ -409,7 +409,7 @@ kernel void calculateKineticEnergy(global float3* velocities, local float* parti
         barrier(CLK_LOCAL_MEM_FENCE);
     }
     if(localId == 0) {
-        energy[get_group_id(0)] = partialEnergy[0] * dropletParameters[type].mass;
+        energy[get_group_id(0)] = 0.5 * partialEnergy[0] * dropletParameters[type].mass;
     }
 }
 

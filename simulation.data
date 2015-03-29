@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=100000
+numberOfSteps=10000
 deltaTime=0.1f
 cellRadius=0.8f
 boxSizeScale=1f
@@ -13,14 +13,14 @@ numberOfDroplets=16384
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
-shouldPrintKineticEnergy=false
-shouldPrintVelocityProfile=false
+shouldPrintKineticEnergy=true
+shouldPrintVelocityProfile=true
 generateRandomPositions=false
 resultsDirectoryBase=../results_
 stepDumpThreshold=5000
 accelerationVesselPart=0.2f
-accelerationValue=0.0005f
-accelerationVeselSteps=200000
+accelerationValue=0.001f
+accelerationVeselSteps=1000000000
 shouldSimulateVesselDroplets=true
 
 #SIMULATION DATA
@@ -31,11 +31,11 @@ cutoffRadius(0,0)=0.8f
 cutoffRadius(0,1)=0.8f
 cutoffRadius(1,1)=0.8f
 pi(0,0)=-1e-2f
-pi(0,1)=-5e-2f
+pi(0,1)=-1.5e-2f
 pi(1,1)=-1e-2f
 gamma(0,0)=-1e-1f
-gamma(0,1)=-2e-1f
-gamma(1,1)=-1e-1f
+gamma(0,1)=-6e-1f
+gamma(1,1)=-9e-2f
 sigma(0,0)=1e-4f
 sigma(0,1)=2e-4f
 sigma(1,1)=1e-4f
