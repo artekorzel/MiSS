@@ -82,6 +82,12 @@ public abstract class Simulation {
     public static float[][] pi;
     public static float[][] gamma;
     public static float[][] sigma;
+    
+    public static double fe;
+    public static double ft;
+    public static double Rhod = 8.44e+26;
+    public static double Boltz = 1.3806e-23;
+    public static double tempd = 306.0;
 
     public abstract void initData() throws Exception;
 
@@ -178,11 +184,92 @@ public abstract class Simulation {
         return prop;
     }
 
-    protected void scaleParameters() {
+    protected void scaleParameters() {        
+        int i, j, ld, ld1;
+        double coef1, coef2, smass, rc, sep;
+        
+        ld = 3;
+        ld1 = 3;
+        coef1 = 2.0 / 7.0;
+        coef2 = 3.0 / 5.0;
+        for (i = 0; i < numberOfCellKinds; i++) {
+            if (mass[i] > 1.0e-20) {
+                mass[i] /= 1000.0f * 6.0230e+23f;
+            }
+        }
+        
+        for (i = 0; i < numberOfCellKinds; i++) {
+            for (j = 0; j < numberOfCellKinds; j++) {
+                smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
+                rc = cutOffRadius[i][j] / Math.cbrt(Rhod);
+                cutOffRadius[i][j] = (float) rc;
+                gamma[i][j] = (float) (gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc);
+                gamma[i][j] = 10.0f * gamma[i][j];
+                pi[i][j] = (float) (6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc));
+            }
+        }
+        
+        cellRadius = cutOffRadius[0][0];
+        for (i = 0; i < numberOfCellKinds; i++) {
+            for (j = 0; j < numberOfCellKinds; j++) {
+                if (cellRadius < cutOffRadius[i][j]) {
+                    cellRadius = cutOffRadius[i][j];
+                }
+            }
+        }
+        
+        sep = 4.0 * Math.PI * cellRadius * cellRadius * Rhod * cellRadius / 3.0;
+        for (i = 0; i < numberOfCellKinds; i++) {
+            for (j = 0; j < numberOfCellKinds; j++) {
+                smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
+                sigma[i][j] = (float) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
+            }
+        }
+        
         float sizeScale = numberOfDroplets / (float) baseNumberOfDroplets;
         boxSize = (float) Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
         boxWidth = boxWidthScale * boxSize / boxSizeScale;
-        numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
+        
+        int numberOfCellsPerXZDim = 16;
+        int numberOfCellsPerYDim = 16;
+        
+        double ul = numberOfDroplets / (Rhod * numberOfCellsPerXZDim * numberOfCellsPerXZDim * numberOfCellsPerYDim);
+        ul = Math.cbrt(ul);
+        System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
+        int ncx = (int) (ul * numberOfCellsPerXZDim / cellRadius);
+        int ncy = (int) (ul * numberOfCellsPerYDim / cellRadius);
+        int ncz = ncx;
+        numberOfCells = ncx * ncy * ncz;
+        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", ncx, ncy, ncz));
+        
+        ul = Math.cbrt(numberOfDroplets / (Rhod * ncx * ncy * ncz));
+        double ue = mass[0] * ul / deltaTime * ul / deltaTime;
+        System.out.println(String.format("Scalep ue: %e %e %e %e\n", mass[0], ue, ul, deltaTime));
+        
+        fe = ue / numberOfDroplets;
+        ft = 1.0 / (1.5 * Boltz);
+        System.out.println(String.format("Scalep fe: %e ft: %e\n", fe, ft));
+        
+        for (i = 0; i < numberOfCellKinds; i++) {
+            for (j = 0; j < numberOfCellKinds; j++) {
+                pi[i][j] = (float) (pi[i][j] * deltaTime * deltaTime / (ul * mass[0]));
+                gamma[i][j] = gamma[i][j] * deltaTime;
+                sigma[i][j] = (float) ((sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]));
+                System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
+            }
+        }
+        
+        for (i = 1; i < numberOfCellKinds; i++) {
+            mass[i] = mass[i] / mass[0];
+        }
+        mass[0] = 1.0f;
+        
+        for (i = 0; i < numberOfCellKinds; i++) {
+            for (j = 0; j < numberOfCellKinds; j++) {
+                cutOffRadius[i][j] = 1.0f / (float) (cutOffRadius[i][j] / ul);
+                System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
+            }
+        }
 
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
     }

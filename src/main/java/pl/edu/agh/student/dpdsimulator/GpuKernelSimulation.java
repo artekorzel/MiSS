@@ -255,20 +255,30 @@ public class GpuKernelSimulation extends Simulation {
             return;
         }
         System.out.print("Ek=");
+        float[] ek = new float[numberOfCellKinds];
         Pointer<Float> partialEnergyPointer = Pointer.allocateFloats(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
             CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities, 
                     LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
                     simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
             partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
-            float ek = 0;
+            ek[type] = 0;
             for(float energy : partialEnergyPointer.getFloats()) {
-                ek += energy;
+                ek[type] += energy;
             }
-            System.out.print((ek /= numberOfDropletsPerType[type]) + " ");
+            ek[type] /= numberOfDropletsPerType[type];
+            System.out.print(ek[type] + " ");
         }
         System.out.println();
         partialEnergyPointer.release();
+        
+        System.out.print("T=");
+        for(int type = 0; type < numberOfCellKinds; ++type) {
+            float fee = (float) (fe * numberOfDroplets / numberOfDropletsPerType[type]);
+            float temp = (float) (ft * (fee * ek[type]));
+            System.out.print(temp + " ");
+        }
+        System.out.println();
     }
 
     private void writeDataFile(CLEvent... events) {
