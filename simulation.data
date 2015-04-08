@@ -1,9 +1,15 @@
 #INIT DATA
 numberOfSteps=10000
 deltaTime=0.1f
+<<<<<<< HEAD
 cellsXAxis=10
 cellsYAxis=50
 cellsZAxis=10
+=======
+cellsXAxis=20
+cellsYAxis=20
+cellsZAxis=20
+>>>>>>> 6eb1055f1ea49e0094b14661c5b37cc85b9f1742
 averageDropletDistance=0.5f
 radiusIn=3.24f
 maxDropletsPerCell=21
