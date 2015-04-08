@@ -44,18 +44,14 @@ public abstract class Simulation {
     public static int numberOfSteps;
     public static float deltaTime;
 
-    public static float initBoxSize;
-    public static float initBoxWidth;
-
     public static float boxSize;
     public static float boxWidth;
     public static float radiusIn;
-    public static float boxSizeScale;
-    public static float boxWidthScale;
 
+    public static int cellsXAxis;
+    public static int cellsYAxis;
+    public static int cellsZAxis;
     public static float cellRadius;
-    public static int baseNumberOfCells;
-    public static int baseNumberOfDroplets;
     public static float averageDropletDistance;
 
     public static int numberOfCells;
@@ -113,11 +109,9 @@ public abstract class Simulation {
             shouldPrintVelocityProfile = Boolean.parseBoolean(prop.getProperty("shouldPrintVelocityProfile"));
             numberOfSteps = Integer.parseInt(prop.getProperty("numberOfSteps"));
             deltaTime = Float.parseFloat(prop.getProperty("deltaTime"));
-            cellRadius = Float.parseFloat(prop.getProperty("cellRadius"));
-            initBoxSize = Float.parseFloat(prop.getProperty("initBoxSize"));
-            initBoxWidth = Float.parseFloat(prop.getProperty("initBoxWidth"));
-            boxSizeScale = Float.parseFloat(prop.getProperty("boxSizeScale"));
-            boxWidthScale = Float.parseFloat(prop.getProperty("boxWidthScale"));
+            cellsXAxis = Integer.parseInt(prop.getProperty("cellsXAxis"));
+            cellsYAxis = Integer.parseInt(prop.getProperty("cellsYAxis"));
+            cellsZAxis = Integer.parseInt(prop.getProperty("cellsZAxis"));
             averageDropletDistance = Float.parseFloat(prop.getProperty("averageDropletDistance"));
             maxDropletsPerCell = Integer.parseInt(prop.getProperty("maxDropletsPerCell"));
             numberOfDroplets = Integer.parseInt(prop.getProperty("numberOfDroplets"));
@@ -130,9 +124,6 @@ public abstract class Simulation {
             accelerationValue = Float.parseFloat(prop.getProperty("accelerationValue"));
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
-
-            baseNumberOfCells = (int) (Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxSize / cellRadius) * Math.ceil(2 * initBoxWidth / cellRadius));
-            baseNumberOfDroplets = 32768;
 
             mass = new float[numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
@@ -166,6 +157,14 @@ public abstract class Simulation {
                     sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
                 }
             }
+            
+            cellRadius = getGratestCutOffRadius();
+            boxSize = cellRadius * cellsXAxis;
+            boxWidth = cellRadius * cellsYAxis;
+            numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
+
+            System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -178,12 +177,11 @@ public abstract class Simulation {
         return prop;
     }
 
-    protected void scaleParameters() {
-        float sizeScale = numberOfDroplets / (float) baseNumberOfDroplets;
-        boxSize = (float) Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
-        boxWidth = boxWidthScale * boxSize / boxSizeScale;
-        numberOfCells = (int) (Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxSize / cellRadius) * Math.ceil(2 * boxWidth / cellRadius));
-
-        System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
+    private float getGratestCutOffRadius() {
+        float max = 0.0f;
+        for(int i = 0; i < numberOfCellKinds; i++){
+            max = max > cutOffRadius[0][i] ? max : cutOffRadius[0][i];
+        }
+        return max;
     }
 }

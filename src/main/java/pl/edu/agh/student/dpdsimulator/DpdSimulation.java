@@ -7,7 +7,6 @@ public class DpdSimulation {
         try {
             Simulation simulation = new GpuKernelSimulation();
             simulation.loadInitialDataFromFile(Simulation.dataFileName);
-            simulation.scaleParameters();
             simulation.initData();
             simulation.performSimulation();
         } catch (Exception e) {
