@@ -1,11 +1,9 @@
 #INIT DATA
 numberOfSteps=10000
 deltaTime=0.1f
-cellRadius=0.8f
-boxSizeScale=1f
-boxWidthScale=4f
-initBoxSize=8f
-initBoxWidth=8f
+cellsXAxis=20
+cellsYAxis=20
+cellsZAxis=20
 averageDropletDistance=0.5f
 radiusIn=3.24f
 maxDropletsPerCell=21
