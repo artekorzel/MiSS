@@ -1,8 +1,8 @@
 #INIT DATA
-numberOfSteps=10000
+numberOfSteps=100
 deltaTime=0.1f
 cellsXAxis=10
-cellsYAxis=50
+cellsYAxis=40
 cellsZAxis=10
 averageDropletDistance=0.5f
 radiusIn=3.24f
