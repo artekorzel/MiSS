@@ -1,11 +1,9 @@
 #INIT DATA
-numberOfSteps=1
-deltaTime=1e-13f
-cellRadius=0.8f
-boxSizeScale=1f
-boxWidthScale=1f
-initBoxSize=8f
-initBoxWidth=8f
+numberOfSteps=100
+deltaTime=0.1f
+cellsXAxis=10
+cellsYAxis=40
+cellsZAxis=10
 averageDropletDistance=0.5f
 radiusIn=3.24f
 maxDropletsPerCell=21
