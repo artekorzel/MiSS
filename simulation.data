@@ -1,6 +1,6 @@
 #INIT DATA
 numberOfSteps=100
-deltaTime=0.1f
+deltaTime=1e-13f
 cellsXAxis=10
 cellsYAxis=40
 cellsZAxis=10

@@ -162,15 +162,7 @@ public abstract class Simulation {
                 for (int j = i; j < numberOfCellKinds; j++) {
                     sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
                 }
-            }
-            
-            cellRadius = getGratestCutOffRadius();
-            boxSize = cellRadius * cellsXAxis / 2;
-            boxWidth = cellRadius * cellsYAxis / 2;
-            numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
-
-            System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
-            
+            }            
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -183,12 +175,6 @@ public abstract class Simulation {
         return prop;
     }
 
-    private float getGratestCutOffRadius() {
-        float max = 0.0f;
-        for(int i = 0; i < numberOfCellKinds; i++){
-            max = max > cutOffRadius[0][i] ? max : cutOffRadius[0][i];
-        }
-        return max;
     protected void scaleParameters() {        
         int i, j, ld, ld1;
         double coef1, coef2, smass, rc, sep;
@@ -214,14 +200,7 @@ public abstract class Simulation {
             }
         }
         
-        cellRadius = cutOffRadius[0][0];
-        for (i = 0; i < numberOfCellKinds; i++) {
-            for (j = 0; j < numberOfCellKinds; j++) {
-                if (cellRadius < cutOffRadius[i][j]) {
-                    cellRadius = cutOffRadius[i][j];
-                }
-            }
-        }
+        cellRadius = getGreatestCutOffRadius();
         
         sep = 4.0 * Math.PI * cellRadius * cellRadius * Rhod * cellRadius / 3.0;
         for (i = 0; i < numberOfCellKinds; i++) {
@@ -230,10 +209,9 @@ public abstract class Simulation {
                 sigma[i][j] = (float) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
             }
         }
-        
-        float sizeScale = numberOfDroplets / (float) baseNumberOfDroplets;
-        boxSize = (float) Math.cbrt(sizeScale * boxSizeScale / boxWidthScale) * initBoxSize;
-        boxWidth = boxWidthScale * boxSize / boxSizeScale;
+                
+        boxSize = cellRadius * cellsXAxis / 2;
+        boxWidth = cellRadius * cellsYAxis / 2;
         
         int numberOfCellsPerXZDim = 16;
         int numberOfCellsPerYDim = 16;
@@ -241,13 +219,10 @@ public abstract class Simulation {
         double ul = numberOfDroplets / (Rhod * numberOfCellsPerXZDim * numberOfCellsPerXZDim * numberOfCellsPerYDim);
         ul = Math.cbrt(ul);
         System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
-        int ncx = (int) (ul * numberOfCellsPerXZDim / cellRadius);
-        int ncy = (int) (ul * numberOfCellsPerYDim / cellRadius);
-        int ncz = ncx;
-        numberOfCells = ncx * ncy * ncz;
-        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", ncx, ncy, ncz));
+        numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
+        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
         
-        ul = Math.cbrt(numberOfDroplets / (Rhod * ncx * ncy * ncz));
+        ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
         double ue = mass[0] * ul / deltaTime * ul / deltaTime;
         System.out.println(String.format("Scalep ue: %e %e %e %e\n", mass[0], ue, ul, deltaTime));
         
@@ -277,5 +252,13 @@ public abstract class Simulation {
         }
 
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
+    }
+    
+    private float getGreatestCutOffRadius() {
+        float max = 0.0f;
+        for(int i = 0; i < numberOfCellKinds; i++){
+            max = max > cutOffRadius[0][i] ? max : cutOffRadius[0][i];
+        }
+        return max;
     }
 }
