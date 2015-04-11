@@ -185,8 +185,10 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent;
         if(generateRandomPositions){
-            generatePositionsEvent = dpdKernel.generateRandomPositions(queue, positions, types,
-                states, simulationParameters, new int[]{numberOfDroplets}, null);
+            generatePositionsEvent = dpdKernel.generateBoryczko(queue, positions, types, states,
+                    cellsXAxis, cellsYAxis, cellsZAxis, simulationParameters, new int[]{1}, null);
+//            generatePositionsEvent = dpdKernel.generateRandomPositions(queue, positions, types,
+//                states, simulationParameters, new int[]{numberOfDroplets}, null);
         } else {
             generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
                 states, simulationParameters, new int[]{numberOfDroplets}, null);        

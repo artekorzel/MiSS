@@ -342,6 +342,78 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
     vector[dropletId] = (float3) (x, y, z);
 }
 
+kernel void generateBoryczko(global float3* vector, global int* types, global int* states,
+    int cellsXAxis, int cellsYAxis, int cellsZAxis, constant SimulationParameters* simulationParameters) {
+            
+    SimulationParameters simulationParams = simulationParameters[0];
+    int id = get_global_id(0);
+    if (id >= 1) {
+        return;
+    }
+    
+    int i, ib, ix, iy, iz, nparts_r;
+    float factx, facty, factz, shftx, shfty, shftz;
+    float xs, ys, zs;
+    float x, y, z;
+    float xmin, xmax, ymin, ymax, zmin, zmax;
+    float xb[4] = {0.5, -0.5, 0.5, -0.5};
+    float yb[4] = {0.5, -0.5,-0.5,  0.5};
+    float zb[4] = {0.5,  0.5,-0.5, -0.5};
+    
+    float averageDropletDistance = simulationParams.averageDropletDistance;
+    float boxSize = simulationParams.boxSize;
+    float boxWidth = simulationParams.boxWidth;
+    
+    int seed;
+    float interval = 1.0f / simulationParams.numberOfTypes;
+    float randomNum;
+    
+    xmin = 0;
+    xmax = boxWidth * 2;
+    ymin = 0;
+    ymax = boxSize * 2;
+    zmin = 0;
+    zmax = boxWidth * 2;
+    
+    factx = cellsXAxis / (2.0 * cellsXAxis);
+    facty = cellsYAxis / (2.0 * cellsYAxis);
+    factz = cellsZAxis / (2.0 * cellsZAxis);
+
+    shftx = 2.0 * factx;
+    shfty = 2.0 * facty;
+    shftz = 2.0 * factz;
+    
+    i = 0;
+
+    for ( ib = 0; ib < 4; ib ++ ) {
+       zs = factz + zb[ib] * factz;
+       for ( iz = 0; iz < cellsZAxis; iz ++ ) {
+          ys = facty + yb[ib] * facty;
+          for ( iy = 0; iy < cellsYAxis; iy ++ ) {
+             xs = factx + xb[ib] * factx;
+             for ( ix = 0; ix < cellsXAxis; ix ++ ) {
+                if ( (xs > xmin && xs < xmax) &&
+                     (ys > ymin && ys < ymax) &&
+                     (zs > zmin && zs < zmax) ) {
+                   vector[i].x = xs - boxWidth;
+                   vector[i].y = ys - boxSize;
+                   vector[i].z = zs - boxWidth;
+                
+                   seed = states[i];     
+                   randomNum = rand(&seed, 1);
+                   types[i] = (int)(randomNum / interval);
+                   states[i] = seed;
+                   i++;
+                }
+                xs = xs + shftx;
+             }
+             ys = ys + shfty;
+          }
+          zs = zs + shftz;
+       }
+    }
+}
+
 kernel void generateVelocities(global float3* velocities, global int* states, global int* types, 
         constant SimulationParameters* simulationParameters) {
             

@@ -248,10 +248,10 @@ public abstract class Simulation {
         }
         
         cellRadius = getGreatestCutOffRadius();
-        boxSize = cellRadius * cellsXAxis / 2;
-        boxWidth = cellRadius * cellsYAxis / 2;
+        boxSize = cellsXAxis / 2;
+        boxWidth = cellsYAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
-        deltaTime = 1f;
+//        deltaTime = 1f;
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
     }
     
