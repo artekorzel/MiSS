@@ -158,7 +158,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int cellsNoY = (int)(2 * boxWidth / cellRadius);
     int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
     
-    int j, neighbourId, dropletCellNeighbourId;
+    int j, neighbourId, dropletCellNeighbourId, noOfNeighbours = 0;
     for(dropletCellNeighbourId = 0; dropletCellNeighbourId < 27; ++dropletCellNeighbourId) {
         int cellId = cellNeighbours[dropletCellId * 27 + dropletCellNeighbourId];
         global int* dropletNeighbours = &cells[maxDropletsPerCell * cellId];
@@ -189,16 +189,22 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
                     randomForce += sigma * weightRValue * normalizedPositionVector
                             * gaussianRandom(dropletId, neighbourId, step);
+                    
+                    ++noOfNeighbours;
                 }
             }
         }
     }
     
+    float3 force;
     if(dropletType != 0 
-            && dropletPosition.y < simulationParams.accelerationVesselPart && step < simulationParams.accelerationVeselSteps) {
-        return conservativeForce + dissipativeForce + randomForce + (float3)(0, simulationParams.accelerationValue, 0);
+            && dropletPosition.y < simulationParams.accelerationVesselPart 
+            && step < simulationParams.accelerationVeselSteps) {
+        force = conservativeForce + dissipativeForce + randomForce + (float3)(0, simulationParams.accelerationValue, 0);
+    } else {
+        force = conservativeForce + dissipativeForce + randomForce;
     }
-    return conservativeForce + dissipativeForce + randomForce;
+    return force / (noOfNeighbours + 1);
 }
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 

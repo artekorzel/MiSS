@@ -162,7 +162,7 @@ public abstract class Simulation {
                 for (int j = i; j < numberOfCellKinds; j++) {
                     sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
                 }
-            }            
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -209,17 +209,13 @@ public abstract class Simulation {
                 sigma[i][j] = (float) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
             }
         }
-                
-        boxSize = cellRadius * cellsXAxis / 2;
-        boxWidth = cellRadius * cellsYAxis / 2;
         
-        int numberOfCellsPerXZDim = 16;
-        int numberOfCellsPerYDim = 16;
-        
-        double ul = numberOfDroplets / (Rhod * numberOfCellsPerXZDim * numberOfCellsPerXZDim * numberOfCellsPerYDim);
-        ul = Math.cbrt(ul);
+        double ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
         System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
-        numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
+        System.out.println(String.format("Scalep nfx %d nfy %d nfz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
+        cellsXAxis = (int) (ul * cellsXAxis / cellRadius);
+        cellsYAxis = (int) (ul * cellsYAxis / cellRadius);
+        cellsZAxis = (int) (ul * cellsZAxis / cellRadius);
         System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
         
         ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
@@ -250,7 +246,12 @@ public abstract class Simulation {
                 System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }
-
+        
+        cellRadius = getGreatestCutOffRadius();
+        boxSize = cellRadius * cellsXAxis / 2;
+        boxWidth = cellRadius * cellsYAxis / 2;
+        numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
+        deltaTime = 1f;
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
     }
     

@@ -266,7 +266,7 @@ public class GpuKernelSimulation extends Simulation {
             for(float energy : partialEnergyPointer.getFloats()) {
                 ek[type] += energy;
             }
-            ek[type] /= numberOfDropletsPerType[type];
+            //ek[type] /= numberOfDropletsPerType[type];
             System.out.print(ek[type] + " ");
         }
         System.out.println();
