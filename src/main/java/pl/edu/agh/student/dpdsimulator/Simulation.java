@@ -251,7 +251,7 @@ public abstract class Simulation {
         boxSize = cellsXAxis / 2;
         boxWidth = cellsYAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
-//        deltaTime = 1f;
+        deltaTime = 1f;
         System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
     }
     

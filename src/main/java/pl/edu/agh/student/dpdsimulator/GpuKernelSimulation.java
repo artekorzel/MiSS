@@ -232,7 +232,7 @@ public class GpuKernelSimulation extends Simulation {
         if(!shouldPrintAvgVelocity) {
             return;
         }
-        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities, 
+        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities,
                 LocalSize.ofFloatArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
                 simulationParameters, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
         Pointer<Float> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);
@@ -260,7 +260,7 @@ public class GpuKernelSimulation extends Simulation {
         float[] ek = new float[numberOfCellKinds];
         Pointer<Float> partialEnergyPointer = Pointer.allocateFloats(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities, 
+            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities,
                     LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
                     simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
             partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
@@ -268,7 +268,6 @@ public class GpuKernelSimulation extends Simulation {
             for(float energy : partialEnergyPointer.getFloats()) {
                 ek[type] += energy;
             }
-            //ek[type] /= numberOfDropletsPerType[type];
             System.out.print(ek[type] + " ");
         }
         System.out.println();

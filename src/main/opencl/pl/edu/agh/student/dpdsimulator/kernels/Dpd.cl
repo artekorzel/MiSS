@@ -182,12 +182,12 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     float gamma = pairParameters.gamma;
                     float sigma = pairParameters.sigma;
 
-                    conservativeForce += pi * (1.0f - distanceValue / cutoffRadius) * normalizedPositionVector;
+                    conservativeForce -= pi * weightRValue * normalizedPositionVector;
 
-                    dissipativeForce -= gamma * weightDValue * normalizedPositionVector
+                    dissipativeForce += gamma * weightDValue * normalizedPositionVector
                             * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
 
-                    randomForce += sigma * weightRValue * normalizedPositionVector
+                    randomForce -= sigma * weightRValue * normalizedPositionVector
                             * gaussianRandom(dropletId, neighbourId, step);
                     
                     ++noOfNeighbours;
@@ -237,7 +237,7 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
             && types[dropletId] == 0) {
         return;
     }
-
+    
     float deltaTime = simulationParams.deltaTime;
     
     float3 dropletVelocity = velocities[dropletId];
@@ -414,8 +414,8 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
     }
 }
 
-kernel void generateVelocities(global float3* velocities, global int* states, global int* types, 
-        constant SimulationParameters* simulationParameters) {
+kernel void generateVelocities(global float3* velocities, global int* states, 
+        global int* types, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
 
