@@ -1,6 +1,10 @@
 typedef struct SimulationParameters {
-    float boxSize;
-    float boxWidth;
+    float boxSizeX;
+    float boxSizeY;
+    float boxSizeZ;
+    int cellsNoX;
+    int cellsNoY;
+    int cellsNoZ;
     float cellRadius;
     int maxDropletsPerCell;
     int numberOfDroplets;
@@ -27,14 +31,11 @@ typedef struct PairParameters {
 } PairParameters;
 
 float weightR(float distanceValue, float cutoffRadius) {
-    if(distanceValue > cutoffRadius) {
-        return 0.0;
-    }
     return 1.0 - distanceValue / cutoffRadius;
 }
 
-float3 normalizePosition(float3 vector, float boxSize, float boxWidth) {
-    float3 changeVector = (float3)(boxSize, boxWidth, boxSize);
+float3 normalizePosition(float3 vector, float boxSizeX, float boxSizeY, float boxSizeZ) {
+    float3 changeVector = (float3)(boxSizeX, boxSizeY, boxSizeZ);
     return fmod(fmod(vector + changeVector, 2.0f * changeVector) + 2.0f * changeVector, 2.0f * changeVector) - changeVector;
 }
 
@@ -79,51 +80,52 @@ float gaussianRandom(int dropletId, int neighbourId, int step) {
     return normalRand(U1, U2);
 }
 
-int calculateCellId(float3 position, float cellRadius, float boxSize, float boxWidth) {
-    return ((int)((position.x + boxSize) / cellRadius)) + 
-            ((int)(2 * boxSize / cellRadius)) * (((int)((position.y + boxWidth) / cellRadius)) + 
-                    ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
+int calculateCellId(float3 position, float cellRadius, float boxSizeX, float boxSizeY, float boxSizeZ) {
+    return ((int)((position.x + boxSizeX) / cellRadius)) + 
+            ((int)(2 * boxSizeX / cellRadius)) * (((int)((position.y + boxSizeY) / cellRadius)) + 
+                    ((int)(2 * boxSizeY / cellRadius)) * ((int)((position.z + boxSizeZ) / cellRadius)));
 }
 
-int3 calculateCellCoordinates(int dropletCellId, float cellRadius, float boxSize, 
-        float boxWidth, int cellsNoXZ, int cellsNoY) {
-    int dropletCellZ = dropletCellId / (cellsNoXZ * cellsNoY);
-    int dropletCellX = dropletCellId - dropletCellZ * cellsNoXZ * cellsNoY;
-    int dropletCellY = dropletCellX / cellsNoXZ;
-    dropletCellX = dropletCellId % cellsNoXZ;
+int3 calculateCellCoordinates(int dropletCellId, float cellRadius, float boxSizeX, float boxSizeY, 
+        float boxSizeZ, int cellsNoX, int cellsNoY, int cellsNoZ) {
+    int dropletCellZ = dropletCellId / (cellsNoX * cellsNoY);
+    int dropletCellX = dropletCellId - dropletCellZ * cellsNoX * cellsNoY;
+    int dropletCellY = dropletCellX / cellsNoX;
+    dropletCellX = dropletCellId % cellsNoX;
     return (int3)(dropletCellX, dropletCellY, dropletCellZ);
 }
 
 float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinates, 
         float cellRadius, int dropletCellId, int neighbourCellId, int neighbourId, 
-        float boxSize, float boxWidth, int cellsNoXZ, int cellsNoY) {
+        float boxSizeX, float boxSizeY, float boxSizeZ, int cellsNoX, int cellsNoY, int cellsNoZ) {
     float3 position = positions[neighbourId];
     
     if(neighbourCellId != dropletCellId) {
-        int3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+        int3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, cellRadius, 
+        boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
 
-        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoXZ - 1) {
-            position.x -= 2 * boxSize;
+        if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoX - 1) {
+            position.x -= 2 * boxSizeX;
         }
         
-        if(dropletCellCoordinates.x == cellsNoXZ - 1 && neighbourCellCoordinates.x == 0) {
-            position.x += 2 * boxSize;
+        if(dropletCellCoordinates.x == cellsNoX - 1 && neighbourCellCoordinates.x == 0) {
+            position.x += 2 * boxSizeX;
         }
         
         if(dropletCellCoordinates.y == 0 && neighbourCellCoordinates.y == cellsNoY - 1) {
-            position.y -= 2 * boxWidth;
+            position.y -= 2 * boxSizeY;
         }
         
         if(dropletCellCoordinates.y == cellsNoY - 1 && neighbourCellCoordinates.y == 0) {
-            position.y += 2 * boxWidth;
+            position.y += 2 * boxSizeY;
         }
         
-        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoXZ - 1) {
-            position.z -= 2 * boxSize;
+        if(dropletCellCoordinates.z == 0 && neighbourCellCoordinates.z == cellsNoZ - 1) {
+            position.z -= 2 * boxSizeZ;
         }
         
-        if(dropletCellCoordinates.z == cellsNoXZ - 1 && neighbourCellCoordinates.z == 0) {
-            position.z += 2 * boxSize;
+        if(dropletCellCoordinates.z == cellsNoZ - 1 && neighbourCellCoordinates.z == 0) {
+            position.z += 2 * boxSizeZ;
         }
     }
     
@@ -132,7 +134,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
 
 float3 calculateForce(global float3* positions, global float3* velocities, global int* types, global int* cells, 
         global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        SimulationParameters simulationParams, int dropletId, int step) {
+        SimulationParameters simulationParams, int dropletId, int step, global float3* forces0) {
             
     int dropletType = types[dropletId];
         
@@ -142,8 +144,12 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     }
     
     float cellRadius = simulationParams.cellRadius;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth;
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
+    int cellsNoX = simulationParams.cellsNoX;
+    int cellsNoY = simulationParams.cellsNoY;
+    int cellsNoZ = simulationParams.cellsNoZ;
     int maxDropletsPerCell = simulationParams.maxDropletsPerCell;
     int numberOfTypes = simulationParams.numberOfTypes;
         
@@ -153,10 +159,9 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities[dropletId];    
-    int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSize, boxWidth);
-    int cellsNoXZ = (int)(2 * boxSize / cellRadius);
-    int cellsNoY = (int)(2 * boxWidth / cellRadius);
-    int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+    int dropletCellId = calculateCellId(dropletPosition, cellRadius, boxSizeX, boxSizeY, boxSizeZ);
+    int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId, cellRadius, 
+            boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
     
     int j, neighbourId, dropletCellNeighbourId, noOfNeighbours = 0;
     for(dropletCellNeighbourId = 0; dropletCellNeighbourId < 27; ++dropletCellNeighbourId) {
@@ -166,8 +171,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
             if(neighbourId != dropletId) {
                 int neighbourType = types[neighbourId];
                 
-                float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, 
-                        cellRadius, dropletCellId, cellId, neighbourId, boxSize, boxWidth, cellsNoXZ, cellsNoY);
+                float3 neighbourPosition = getNeighbourPosition(positions, dropletCellCoordinates, cellRadius, 
+                        dropletCellId, cellId, neighbourId, boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
                 float distanceValue = distance(neighbourPosition, dropletPosition);
 
                 PairParameters pairParameters = pairParams[dropletType * numberOfTypes + neighbourType];
@@ -204,10 +209,16 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     } else {
         force = conservativeForce + dissipativeForce + randomForce;
     }
+    
+    if(dropletId == 1) {
+        forces0[0] = conservativeForce;
+        forces0[1] = dissipativeForce;
+        forces0[2] = randomForce;
+    }
     return force / (noOfNeighbours + 1);
 }
 
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, 
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global float3* forces0,
         global int* types, global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, 
         constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters, int step) {
 
@@ -219,7 +230,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     }
     
     forces[dropletId] = calculateForce(positions, velocities, types, cells, 
-            cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step);
+            cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step, forces0);
 }
 
 kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
@@ -245,7 +256,8 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     float dropletMass = dropletParams[types[dropletId]].mass;
 
     float3 newPosition = positions[dropletId] + deltaTime * dropletVelocity;
-    positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSize, simulationParams.boxWidth);    
+    positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSizeX, 
+            simulationParams.boxSizeY, simulationParams.boxSizeZ);    
     velocities[dropletId] = velocities[dropletId] + deltaTime * forces[dropletId] / dropletMass;
 }
 
@@ -260,20 +272,22 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     }
         
     float averageDropletDistance = simulationParams.averageDropletDistance;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth;
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
     
-    int numberOfDropletsPerXZDim = ceil(2 * boxSize / averageDropletDistance);
-    int numberOfDropletsPerYDim = ceil(2 * boxWidth / averageDropletDistance);
-    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXZDim * numberOfDropletsPerYDim;
+    int numberOfDropletsPerXDim = ceil(2 * boxSizeX / averageDropletDistance);
+    int numberOfDropletsPerYDim = ceil(2 * boxSizeY / averageDropletDistance);
+    int numberOfDropletsPerZDim = ceil(2 * boxSizeZ / averageDropletDistance);
+    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXDim * numberOfDropletsPerYDim;
     
-    int dropletIdPartX = dropletId % numberOfDropletsPerXZDim;
-    int dropletIdPartY = (dropletId / numberOfDropletsPerXZDim) % numberOfDropletsPerYDim;
+    int dropletIdPartX = dropletId % numberOfDropletsPerXDim;
+    int dropletIdPartY = (dropletId / numberOfDropletsPerXDim) % numberOfDropletsPerYDim;
     int dropletIdPartZ = dropletId / squareOfNumberOfDropletsPerDim;
     
-    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSize;
-    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxWidth;
-    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSize;
+    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSizeX;
+    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxSizeY;
+    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSizeZ;
     
     int seed = states[dropletId];   
     float distanceFromY = sqrt(x * x + z * z);
@@ -318,20 +332,22 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
     }
         
     float averageDropletDistance = simulationParams.averageDropletDistance;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth;
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
     
-    int numberOfDropletsPerXZDim = ceil(2 * boxSize / averageDropletDistance);
-    int numberOfDropletsPerYDim = ceil(2 * boxWidth / averageDropletDistance);
-    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXZDim * numberOfDropletsPerYDim;
+    int numberOfDropletsPerXDim = ceil(2 * boxSizeX / averageDropletDistance);
+    int numberOfDropletsPerYDim = ceil(2 * boxSizeY / averageDropletDistance);
+    int numberOfDropletsPerZDim = ceil(2 * boxSizeZ / averageDropletDistance);
+    int squareOfNumberOfDropletsPerDim = numberOfDropletsPerXDim * numberOfDropletsPerYDim;
     
-    int dropletIdPartX = dropletId % numberOfDropletsPerXZDim;
-    int dropletIdPartY = (dropletId / numberOfDropletsPerXZDim) % numberOfDropletsPerYDim;
+    int dropletIdPartX = dropletId % numberOfDropletsPerXDim;
+    int dropletIdPartY = (dropletId / numberOfDropletsPerXDim) % numberOfDropletsPerYDim;
     int dropletIdPartZ = dropletId / squareOfNumberOfDropletsPerDim;
     
-    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSize;
-    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxWidth;
-    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSize;
+    float x = (dropletIdPartX + 0.5f) * averageDropletDistance - boxSizeX;
+    float y = (dropletIdPartY + 0.5f) * averageDropletDistance - boxSizeY;
+    float z = (dropletIdPartZ + 0.5f) * averageDropletDistance - boxSizeZ;
     
     int seed = states[dropletId];   
     float interval = 1.0f / simulationParams.numberOfTypes;
@@ -343,7 +359,7 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
 }
 
 kernel void generateBoryczko(global float3* vector, global int* types, global int* states,
-    int cellsXAxis, int cellsYAxis, int cellsZAxis, constant SimulationParameters* simulationParameters) {
+    constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
     int id = get_global_id(0);
@@ -361,23 +377,27 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
     float zb[4] = {0.5,  0.5,-0.5, -0.5};
     
     float averageDropletDistance = simulationParams.averageDropletDistance;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth;
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
+    int cellsNoX = simulationParams.cellsNoX;
+    int cellsNoY = simulationParams.cellsNoY;
+    int cellsNoZ = simulationParams.cellsNoZ;
     
     int seed;
     float interval = 1.0f / simulationParams.numberOfTypes;
     float randomNum;
     
     xmin = 0;
-    xmax = boxWidth * 2;
+    xmax = boxSizeX * 2;
     ymin = 0;
-    ymax = boxSize * 2;
+    ymax = boxSizeY * 2;
     zmin = 0;
-    zmax = boxWidth * 2;
+    zmax = boxSizeZ * 2;
     
-    factx = cellsXAxis / (2.0 * cellsXAxis);
-    facty = cellsYAxis / (2.0 * cellsYAxis);
-    factz = cellsZAxis / (2.0 * cellsZAxis);
+    factx = 0.5f;
+    facty = 0.5f;
+    factz = 0.5f;
 
     shftx = 2.0 * factx;
     shfty = 2.0 * facty;
@@ -387,17 +407,17 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
 
     for ( ib = 0; ib < 4; ib ++ ) {
        zs = factz + zb[ib] * factz;
-       for ( iz = 0; iz < cellsZAxis; iz ++ ) {
+       for ( iz = 0; iz < cellsNoZ; iz ++ ) {
           ys = facty + yb[ib] * facty;
-          for ( iy = 0; iy < cellsYAxis; iy ++ ) {
+          for ( iy = 0; iy < cellsNoY; iy ++ ) {
              xs = factx + xb[ib] * factx;
-             for ( ix = 0; ix < cellsXAxis; ix ++ ) {
+             for ( ix = 0; ix < cellsNoX; ix ++ ) {
                 if ( (xs > xmin && xs < xmax) &&
                      (ys > ymin && ys < ymax) &&
                      (zs > zmin && zs < zmax) ) {
-                   vector[i].x = xs - boxWidth;
-                   vector[i].y = ys - boxSize;
-                   vector[i].z = zs - boxWidth;
+                   vector[i].x = xs - boxSizeX;
+                   vector[i].y = ys - boxSizeY;
+                   vector[i].z = zs - boxSizeZ;
                 
                    seed = states[i];     
                    randomNum = rand(&seed, 1);
@@ -502,15 +522,16 @@ kernel void fillCells(global int* cells, global float3* positions,
     }
 
     float cellRadius = simulationParams.cellRadius;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth; 
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
     int numberOfDroplets = simulationParams.numberOfDroplets; 
     int maxDropletsPerCell = simulationParams.maxDropletsPerCell;
 
     int dropletId = 0, freeId = 0;
     for(; dropletId < numberOfDroplets; ++dropletId) {
         float3 position = positions[dropletId];
-        int predictedCellId = calculateCellId(position, cellRadius, boxSize, boxWidth);
+        int predictedCellId = calculateCellId(position, cellRadius, boxSizeX, boxSizeY, boxSizeZ);
         if(predictedCellId == cellId) {
             cells[maxDropletsPerCell * cellId + freeId++] = dropletId;
         }
@@ -529,16 +550,17 @@ kernel void fillCellNeighbours(global int* cellNeighbours, constant SimulationPa
         return;
     }
     
-    float cellRadius = simulationParams.cellRadius;
-    float boxSize = simulationParams.boxSize;
-    float boxWidth = simulationParams.boxWidth;
+    float boxSizeX = simulationParams.boxSizeX;
+    float boxSizeY = simulationParams.boxSizeY;
+    float boxSizeZ = simulationParams.boxSizeZ;
     
-    int numberOfCellsPerXZDim = ceil(2 * boxSize / cellRadius);
-    int numberOfCellsPerYDim = ceil(2 * boxWidth / cellRadius);
-    int squareOfNumberOfCellsPerDim = numberOfCellsPerXZDim * numberOfCellsPerYDim;
+    int numberOfCellsPerXDim = simulationParams.cellsNoX;
+    int numberOfCellsPerYDim = simulationParams.cellsNoY;
+    int numberOfCellsPerZDim = simulationParams.cellsNoZ;
+    int squareOfNumberOfCellsPerDim = numberOfCellsPerXDim * numberOfCellsPerYDim;
     
-    int cellIdPartX = cellId % numberOfCellsPerXZDim;
-    int cellIdPartY = (cellId / numberOfCellsPerXZDim) % numberOfCellsPerYDim;
+    int cellIdPartX = cellId % numberOfCellsPerXDim;
+    int cellIdPartY = (cellId / numberOfCellsPerXDim) % numberOfCellsPerYDim;
     int cellIdPartZ = cellId / squareOfNumberOfCellsPerDim;
 
     int cellIndex = cellId * 27;
@@ -548,21 +570,21 @@ kernel void fillCellNeighbours(global int* cellNeighbours, constant SimulationPa
     int neighboursZ[3];
 
     neighboursX[0] = cellIdPartX;
-    neighboursX[1] = (cellIdPartX + numberOfCellsPerXZDim - 1) % numberOfCellsPerXZDim;
-    neighboursX[2] = (cellIdPartX + numberOfCellsPerXZDim + 1) % numberOfCellsPerXZDim;
+    neighboursX[1] = (cellIdPartX + numberOfCellsPerXDim - 1) % numberOfCellsPerXDim;
+    neighboursX[2] = (cellIdPartX + numberOfCellsPerXDim + 1) % numberOfCellsPerXDim;
     
     neighboursY[0] = cellIdPartY;
     neighboursY[1] = (cellIdPartY + numberOfCellsPerYDim - 1) % numberOfCellsPerYDim;
     neighboursY[2] = (cellIdPartY + numberOfCellsPerYDim + 1) % numberOfCellsPerYDim;
 
     neighboursZ[0] = cellIdPartZ;
-    neighboursZ[1] = (cellIdPartZ + numberOfCellsPerXZDim - 1) % numberOfCellsPerXZDim;
-    neighboursZ[2] = (cellIdPartZ + numberOfCellsPerXZDim + 1) % numberOfCellsPerXZDim;
+    neighboursZ[1] = (cellIdPartZ + numberOfCellsPerZDim - 1) % numberOfCellsPerZDim;
+    neighboursZ[2] = (cellIdPartZ + numberOfCellsPerZDim + 1) % numberOfCellsPerZDim;
 
     for(int i = 0; i < 3; i++){
         for(int j = 0; j < 3; j++){
             for(int k = 0; k < 3; k++){
-                cellNeighbours[cellIndex++] = neighboursX[i] + neighboursY[j] * numberOfCellsPerXZDim + neighboursZ[k] * squareOfNumberOfCellsPerDim;
+                cellNeighbours[cellIndex++] = neighboursX[i] + neighboursY[j] * numberOfCellsPerXDim + neighboursZ[k] * squareOfNumberOfCellsPerDim;
             }
         }
     }

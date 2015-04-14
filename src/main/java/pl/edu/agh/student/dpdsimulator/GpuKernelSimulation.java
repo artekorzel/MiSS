@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileWriter;
 import static java.nio.file.Files.copy;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
@@ -39,6 +40,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Float> positions;
     private CLBuffer<Float> velocities;
     private CLBuffer<Float> forces;
+    private CLBuffer<Float> forces0;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
     private CLBuffer<Integer> dropletsPerType;
@@ -63,6 +65,8 @@ public class GpuKernelSimulation extends Simulation {
                 numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
+        forces0 = context.createFloatBuffer(CLMem.Usage.InputOutput,
+                3 * VECTOR_SIZE);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         dropletsPerType = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCellKinds);
@@ -93,16 +97,23 @@ public class GpuKernelSimulation extends Simulation {
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
+            Pointer<Float> read2 = positions.read(queue);
+            float[] floats = read2.getFloats();
+            System.out.println("xxx " + floats[4] + " " + floats[5] + " " + floats[6]);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
             printKineticEnergy(loopEndEvent);
             writeDataFile(loopEndEvent);
+            Pointer<Float> read = forces0.read(queue, loopEndEvent);
+            System.out.println("f " + Arrays.toString(read.getFloats()));
             CLEvent.waitFor(loopEndEvent);
         }
         long endTime = System.nanoTime();
         System.out.println("\nInit time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
-        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);   
-        copy(new File("simulation.data").toPath(), new File(directoryName + "/simulation.data").toPath(), REPLACE_EXISTING);
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);  
+        if(directoryName != null) {
+            copy(new File("simulation.data").toPath(), new File(directoryName + "/simulation.data").toPath(), REPLACE_EXISTING);
+        }
         printVelocityProfile();
     }
     
@@ -137,8 +148,12 @@ public class GpuKernelSimulation extends Simulation {
     
     private Dpd.SimulationParameters createSimulationParameter() {
         return new Dpd.SimulationParameters()
-                .boxSize(boxSize)
-                .boxWidth(boxWidth)
+                .boxSizeX(boxSizeX)
+                .boxSizeY(boxSizeY)
+                .boxSizeZ(boxSizeZ)
+                .cellsNoX(cellsXAxis)
+                .cellsNoY(cellsYAxis)
+                .cellsNoZ(cellsZAxis)
                 .numberOfDroplets(numberOfDroplets)
                 .numberOfCells(numberOfCells)
                 .numberOfTypes(numberOfCellKinds)
@@ -146,7 +161,7 @@ public class GpuKernelSimulation extends Simulation {
                 .deltaTime(deltaTime)
                 .cellRadius(cellRadius)
                 .radiusIn(radiusIn)
-                .accelerationVesselPart(2 * accelerationVesselPart * boxWidth - boxWidth)
+                .accelerationVesselPart(2 * accelerationVesselPart * boxSizeY - boxSizeY)
                 .accelerationValue(accelerationValue)
                 .averageDropletDistance(averageDropletDistance)
                 .accelerationVeselSteps(accelerationVeselSteps)
@@ -185,8 +200,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent;
         if(generateRandomPositions){
-            generatePositionsEvent = dpdKernel.generateBoryczko(queue, positions, types, states,
-                    cellsXAxis, cellsYAxis, cellsZAxis, simulationParameters, new int[]{1}, null);
+            generatePositionsEvent = dpdKernel.generateBoryczko(queue, positions, types, states, simulationParameters, new int[]{1}, null);
 //            generatePositionsEvent = dpdKernel.generateRandomPositions(queue, positions, types,
 //                states, simulationParameters, new int[]{numberOfDroplets}, null);
         } else {
@@ -218,7 +232,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, forces0, types,
                 cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
                 step, new int[]{numberOfDroplets}, null, events);
     }
@@ -328,7 +342,7 @@ public class GpuKernelSimulation extends Simulation {
         
         final double sliceSize = cellRadius;
         Pointer<Float> positionsPointer = positions.read(queue, events);
-        Set[] buckets = new Set[(int)Math.ceil(2 * boxSize / sliceSize)];
+        Set[] buckets = new Set[(int)Math.ceil(2 * boxSizeX / sliceSize)];
         for(int i = 0; i < buckets.length; ++i) {
             buckets[i] = new HashSet();
         }
@@ -338,7 +352,7 @@ public class GpuKernelSimulation extends Simulation {
             float y = positionsPointer.get(i * VECTOR_SIZE + 1);
             float z = positionsPointer.get(i * VECTOR_SIZE + 2);
             if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
-                buckets[(int)((z + boxSize)/sliceSize)].add(i);
+                buckets[(int)((z + boxSizeX)/sliceSize)].add(i);
             }
         }
         

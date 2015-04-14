@@ -2,6 +2,7 @@ package pl.edu.agh.student.dpdsimulator;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Properties;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
@@ -44,8 +45,9 @@ public abstract class Simulation {
     public static int numberOfSteps;
     public static float deltaTime;
 
-    public static float boxSize;
-    public static float boxWidth;
+    public static float boxSizeX;
+    public static float boxSizeY;
+    public static float boxSizeZ;
     public static float radiusIn;
 
     public static int cellsXAxis;
@@ -242,17 +244,22 @@ public abstract class Simulation {
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                cutOffRadius[i][j] = 1.0f / (float) (cutOffRadius[i][j] / ul);
+                cutOffRadius[i][j] = (float) (cutOffRadius[i][j] / ul);
                 System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }
         
         cellRadius = getGreatestCutOffRadius();
-        boxSize = cellsXAxis / 2;
-        boxWidth = cellsYAxis / 2;
+        boxSizeX = cellsXAxis / 2;
+        boxSizeY = cellsYAxis / 2;
+        boxSizeZ = cellsZAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
         deltaTime = 1f;
-        System.out.println("" + boxSize + ", " + boxWidth + "; " + numberOfDroplets + "; " + numberOfCells);
+        System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
+        
+        System.out.println("Pi " + Arrays.toString(pi[0]));
+        System.out.println("Gamma " + Arrays.toString(gamma[0]));
+        System.out.println("Sigma " + Arrays.toString(sigma[0]));
     }
     
     private float getGreatestCutOffRadius() {
