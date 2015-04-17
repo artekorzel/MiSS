@@ -244,7 +244,7 @@ public abstract class Simulation {
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                cutOffRadius[i][j] = 1.0f / (float) (cutOffRadius[i][j] / ul);
+                cutOffRadius[i][j] = (float) (cutOffRadius[i][j] / ul);
                 System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }

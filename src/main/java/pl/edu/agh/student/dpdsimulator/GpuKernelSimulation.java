@@ -94,18 +94,20 @@ public class GpuKernelSimulation extends Simulation {
         writeDataFile(loopEndEvent);   
         printAverageVelocity(loopEndEvent); 
         printKineticEnergy(loopEndEvent);
+            Pointer<Float> read2 = positions.read(queue);
+            float[] floats = read2.getFloats();
+            int droplId = 1210;
+            System.out.println("xxx1210 " + floats[droplId * VECTOR_SIZE] + " " + floats[droplId * VECTOR_SIZE + 1] + " " + floats[droplId * VECTOR_SIZE + 2]);
+            droplId = 13499;
+            System.out.println("xxx13499 " + floats[droplId * VECTOR_SIZE] + " " + floats[droplId * VECTOR_SIZE + 1] + " " + floats[droplId * VECTOR_SIZE + 2]);
+            read2.release();
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
-            Pointer<Float> read2 = positions.read(queue);
-            float[] floats = read2.getFloats();
-            System.out.println("xxx " + floats[4] + " " + floats[5] + " " + floats[6]);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
             printKineticEnergy(loopEndEvent);
             writeDataFile(loopEndEvent);
-            Pointer<Float> read = forces0.read(queue, loopEndEvent);
-            System.out.println("f " + Arrays.toString(read.getFloats()));
             CLEvent.waitFor(loopEndEvent);
         }
         long endTime = System.nanoTime();
@@ -212,7 +214,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> dropletsPerTypePointer = dropletsPerType.read(queue, countDropletsEvent);
         numberOfDropletsPerType = dropletsPerTypePointer.getInts();
         dropletsPerTypePointer.release();
-        return dpdKernel.generateVelocities(queue, velocities, states, types, simulationParameters, 
+        return dpdKernel.generateVelocities(queue, velocities, forces, states, types, simulationParameters, 
                 new int[]{numberOfDroplets}, null, countDropletsEvent);
     }
 
@@ -226,7 +228,16 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent performSingleStep(CLEvent... events) {
         CLEvent forcesEvent = calculateForces(events);
+        
+            Pointer<Float> read = forces0.read(queue, forcesEvent);
+            System.out.println("f " + Arrays.toString(read.getFloats()));
+            read.release();
         CLEvent newPositionsAndVelocitiesEvent = calculateNewPositionsAndVelocities(forcesEvent);
+        
+            read = forces0.read(queue, newPositionsAndVelocitiesEvent);
+            System.out.println("f " + Arrays.toString(read.getFloats()));
+            read.release();
+            
         CLEvent cellsEvent = fillCells(positions, newPositionsAndVelocitiesEvent);
         return cellsEvent;
     }
@@ -238,7 +249,7 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
-        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces, types, pairParameters,
+        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces, forces0, types, pairParameters,
                 dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
 
@@ -274,7 +285,7 @@ public class GpuKernelSimulation extends Simulation {
         float[] ek = new float[numberOfCellKinds];
         Pointer<Float> partialEnergyPointer = Pointer.allocateFloats(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities,
+            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities, forces,
                     LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
                     simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
             partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
