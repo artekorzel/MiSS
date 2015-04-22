@@ -75,9 +75,10 @@ float normalRand(float U1, float U2) {
 // <-1; 1>
 float gaussianRandom(int dropletId, int neighbourId, int step) {
     int seed = calculateHash(dropletId, neighbourId);
-    float U1 = rand(&seed, step);
+    /*float U1 = rand(&seed, step);
     float U2 = rand(&seed, step);
-    return normalRand(U1, U2);
+    return normalRand(U1, U2);*/
+    return rand(&seed, step);
 }
 
 int calculateCellId(float3 position, float boxSizeX, float boxSizeY, float boxSizeZ) {
@@ -134,7 +135,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
 
 float3 calculateForce(global float3* positions, global float3* velocities, global int* types, global int* cells, 
         global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        SimulationParameters simulationParams, int dropletId, int step, global float3* forces0) {
+        SimulationParameters simulationParams, int dropletId, int step, global float* forces0) {
             
     int dropletType = types[dropletId];
         
@@ -191,13 +192,13 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     dissipativeForce += gamma * weightDValue * normalizedPositionVector
                             * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
 
-                    if(dropletId == 1210 && neighbourId == 13499) {
-                        forces0[1] = gamma * weightDValue * normalizedPositionVector
-                            * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
-                    }
-
+                    float randnum = gaussianRandom(dropletId, neighbourId, step);
                     randomForce -= sigma * weightRValue * normalizedPositionVector
-                            * gaussianRandom(dropletId, neighbourId, step);
+                            * randnum;
+
+                    if(dropletId == 0) {
+                        forces0[noOfNeighbours] = randnum;
+                    }
                             
                     ++noOfNeighbours;
                 }
@@ -214,15 +215,10 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         force = conservativeForce + dissipativeForce + randomForce;
     }
     
-    if(dropletId == 1210) {
-        forces0[0] = conservativeForce;
-        /*forces0[1] = dissipativeForce;
-        forces0[2] = randomForce;*/
-    }
     return force / (noOfNeighbours + 1);
 }
 
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global float3* forces0,
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global float* forces0,
         global int* types, global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, 
         constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters, int step) {
 
