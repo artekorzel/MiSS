@@ -64,21 +64,9 @@ float rand(int* seed, int step) {
 }
 
 // <-1; 1>
-float normalRand(float U1, float U2) {
-     float R = -2 * log(U1);
-     float fi = 2 * M_PI * U2;
-     float Z1 = sqrt(R) * cos(fi);
-     return Z1;
-     //float Z2 = sqrt(R) * sin(fi);
-}
-
-// <-1; 1>
-float gaussianRandom(int dropletId, int neighbourId, int step) {
+float pairRandom(int dropletId, int neighbourId, int step) {
     int seed = calculateHash(dropletId, neighbourId);
-    /*float U1 = rand(&seed, step);
-    float U2 = rand(&seed, step);
-    return normalRand(U1, U2);*/
-    return rand(&seed, step);
+    return 2 * rand(&seed, step) - 1;
 }
 
 int calculateCellId(float3 position, float boxSizeX, float boxSizeY, float boxSizeZ) {
@@ -104,7 +92,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
     if(neighbourCellId != dropletCellId) {
         int3 neighbourCellCoordinates = calculateCellCoordinates(neighbourCellId, 
                 boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
-
+                
         if(dropletCellCoordinates.x == 0 && neighbourCellCoordinates.x == cellsNoX - 1) {
             position.x -= 2 * boxSizeX;
         }
@@ -133,8 +121,8 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
     return position;
 }
 
-float3 calculateForce(global float3* positions, global float3* velocities, global int* types, global int* cells, 
-        global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
+float3 calculateForce(global float3* positions, global float3* velocities, global float3* velocities0, global int* types, 
+        global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
         SimulationParameters simulationParams, int dropletId, int step, global float* forces0) {
             
     int dropletType = types[dropletId];
@@ -158,7 +146,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     float3 randomForce = (float3)(0.0, 0.0, 0.0);
     
     float3 dropletPosition = positions[dropletId];
-    float3 dropletVelocity = velocities[dropletId];    
+    float3 dropletVelocity = velocities0[dropletId];    
     int dropletCellId = calculateCellId(dropletPosition, boxSizeX, boxSizeY, boxSizeZ);
     int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId,
             boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
@@ -187,17 +175,17 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     float gamma = pairParameters.gamma;
                     float sigma = pairParameters.sigma;
 
-                    conservativeForce -= pi * weightRValue * normalizedPositionVector;
+                    conservativeForce += pi * weightRValue * normalizedPositionVector;
 
-                    dissipativeForce += gamma * weightDValue * normalizedPositionVector
-                            * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
+                    dissipativeForce -= gamma * weightDValue * normalizedPositionVector
+                            * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
 
-                    float randnum = gaussianRandom(dropletId, neighbourId, step);
-                    randomForce -= sigma * weightRValue * normalizedPositionVector
-                            * randnum;
-
-                    if(dropletId == 0) {
-                        forces0[noOfNeighbours] = randnum;
+                    
+                    if(dropletCellId == cellId) {
+                    randomForce += sigma * weightRValue * normalizedPositionVector;
+//                            * pairRandom(dropletId, neighbourId, step);
+                    } else {
+                        randomForce -= sigma * weightRValue * normalizedPositionVector;
                     }
                             
                     ++noOfNeighbours;
@@ -218,8 +206,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     return force / (noOfNeighbours + 1);
 }
 
-kernel void calculateForces(global float3* positions, global float3* velocities, global float3* forces, global float* forces0,
-        global int* types, global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, 
+kernel void calculateForces(global float3* positions, global float3* velocities, global float3* velocities0, global float3* forces, 
+        global float* forces0, global int* types, global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, 
         constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters, int step) {
 
     SimulationParameters simulationParams = simulationParameters[0];
@@ -229,13 +217,14 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
         return;
     }
     
-    forces[dropletId] = calculateForce(positions, velocities, types, cells, 
+    forces[dropletId] = calculateForce(positions, velocities, velocities0, types, cells, 
             cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step, forces0);
 }
 
 kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
-        global float3* forces, global float3* forces0, global int* types, constant PairParameters* pairParams, 
-        constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters) {
+        global float3* velocities0, global float3* forces, global float* dropletsEnergy, global int* types, 
+        constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
+        constant SimulationParameters* simulationParameters) {
 
     SimulationParameters simulationParams = simulationParameters[0];
     
@@ -249,19 +238,31 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
         return;
     }
         
-    float3 dropletVelocity = velocities[dropletId];
     float3 dropletForce = forces[dropletId];
+    float3 dropletVelocity = velocities[dropletId] - dropletForce;
+    float3 dropletVelocityBuf = 0.5f * (velocities[dropletId] + dropletVelocity);
     float dropletMass = dropletParams[types[dropletId]].mass;
-
-    float3 newPosition = positions[dropletId] + (dropletVelocity - dropletForce) / dropletMass;
-    positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSizeX, 
-            simulationParams.boxSizeY, simulationParams.boxSizeZ);    
-    velocities[dropletId] = velocities[dropletId] + 0.5f * forces[dropletId];
     
-    if(dropletId == 1210) {
-        forces0[0] = newPosition;
-        forces0[1] = velocities[dropletId];
-        forces0[2] = forces[dropletId];
+    dropletsEnergy[dropletId] = 0.5f * length(dropletVelocityBuf) * length(dropletVelocityBuf) / dropletMass;
+
+    float3 newPosition = positions[dropletId] + dropletVelocity / dropletMass;
+    positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSizeX, 
+            simulationParams.boxSizeY, simulationParams.boxSizeZ);
+    velocities[dropletId] = dropletVelocity;
+    velocities0[dropletId] = 2 * dropletVelocity - dropletVelocityBuf;
+        
+    if(dropletId == 0) {
+        printf("v %e %e %e\n", 
+        velocities[dropletId].x, velocities[dropletId].y, velocities[dropletId].z);
+        
+        printf("vbuf %e %e %e\n", 
+        dropletVelocityBuf.x,dropletVelocityBuf.y,dropletVelocityBuf.z);
+        
+        printf("v0 %e %e %e\n", 
+        velocities0[dropletId].x, velocities0[dropletId].y, velocities0[dropletId].z);
+        
+        printf("xxx %e %e %e\n", 
+        newPosition.x,newPosition.y,newPosition.z);
     }
 }
 
@@ -437,8 +438,8 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
     }
 }
 
-kernel void generateVelocities(global float3* velocities, global float3* forces, global int* states, 
-        global int* types, constant SimulationParameters* simulationParameters) {
+kernel void generateVelocities(global float3* velocities, global float3* velocities0, global float3* forces, 
+        global float* energy, global int* states, global int* types, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
 
@@ -447,11 +448,13 @@ kernel void generateVelocities(global float3* velocities, global float3* forces,
         return;
     }
     
-    velocities[dropletId] = (float3) (0, 0, 0);
-    forces[dropletId] = (float3) (0, 0, 0);
+    velocities[dropletId] = 0;
+    velocities0[dropletId] = 0;
+    forces[dropletId] = 0;
+    energy[dropletId] = 0;
 }
 
-kernel void calculateAverageVelocity(global float3* velocities, local float3* partialSums, 
+kernel void calculateAverageVelocity(global float3* velocities, global float3* velocities0, local float3* partialSums, 
         global float3* averageVelocity, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
@@ -481,8 +484,8 @@ kernel void calculateAverageVelocity(global float3* velocities, local float3* pa
     }
 }
 
-kernel void calculateKineticEnergy(global float3* velocities, global float3* forces, local float* partialEnergy, 
-        global float* energy, global int* types, constant DropletParameters* dropletParameters,
+kernel void calculateKineticEnergy(global float* dropletsEnergy, local float* partialEnergy, global float* energy, 
+        global int* types, constant DropletParameters* dropletParameters,
         constant SimulationParameters* simulationParameters, int type) {
             
     SimulationParameters simulationParams = simulationParameters[0];
@@ -495,8 +498,7 @@ kernel void calculateKineticEnergy(global float3* velocities, global float3* for
     float partialSum = 0;
     while (globalId < numberOfDroplets) {
         if(types[globalId] == type) {
-            float velocity = length(velocities[globalId] - 0.5f * forces[globalId]);
-            partialSum += velocity * velocity;
+            partialSum += dropletsEnergy[globalId];
         }
         globalId += globalSize;
     }
@@ -511,7 +513,7 @@ kernel void calculateKineticEnergy(global float3* velocities, global float3* for
         barrier(CLK_LOCAL_MEM_FENCE);
     }
     if(localId == 0) {
-        energy[get_group_id(0)] = 0.5 * partialEnergy[0] / dropletParameters[type].mass;
+        energy[get_group_id(0)] = partialEnergy[0];
     }
 }
 

@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileWriter;
 import static java.nio.file.Files.copy;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
@@ -39,8 +38,10 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Integer> cellNeighbours;
     private CLBuffer<Float> positions;
     private CLBuffer<Float> velocities;
+    private CLBuffer<Float> velocities0;
     private CLBuffer<Float> forces;
     private CLBuffer<Float> forces0;
+    private CLBuffer<Float> energy;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
     private CLBuffer<Integer> dropletsPerType;
@@ -52,7 +53,7 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData() throws Exception {
-        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
+        context = JavaCL.createContext(null, JavaCL.getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
         
@@ -63,10 +64,13 @@ public class GpuKernelSimulation extends Simulation {
                 numberOfDroplets * VECTOR_SIZE);
         velocities = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
+        velocities0 = context.createFloatBuffer(CLMem.Usage.InputOutput,
+                numberOfDroplets * VECTOR_SIZE);
         forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         forces0 = context.createFloatBuffer(CLMem.Usage.InputOutput,
                 3 * VECTOR_SIZE);
+        energy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         dropletsPerType = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCellKinds);
@@ -94,13 +98,6 @@ public class GpuKernelSimulation extends Simulation {
         writeDataFile(loopEndEvent);   
         printAverageVelocity(loopEndEvent); 
         printKineticEnergy(loopEndEvent);
-            Pointer<Float> read2 = positions.read(queue);
-            float[] floats = read2.getFloats();
-            int droplId = 1210;
-            System.out.println("xxx1210 " + floats[droplId * VECTOR_SIZE] + " " + floats[droplId * VECTOR_SIZE + 1] + " " + floats[droplId * VECTOR_SIZE + 2]);
-            droplId = 13499;
-            System.out.println("xxx13499 " + floats[droplId * VECTOR_SIZE] + " " + floats[droplId * VECTOR_SIZE + 1] + " " + floats[droplId * VECTOR_SIZE + 2]);
-            read2.release();
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
             System.out.println("\nStep: " + step);
@@ -214,8 +211,8 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> dropletsPerTypePointer = dropletsPerType.read(queue, countDropletsEvent);
         numberOfDropletsPerType = dropletsPerTypePointer.getInts();
         dropletsPerTypePointer.release();
-        return dpdKernel.generateVelocities(queue, velocities, forces, states, types, simulationParameters, 
-                new int[]{numberOfDroplets}, null, countDropletsEvent);
+        return dpdKernel.generateVelocities(queue, velocities, velocities0, forces, energy, states, 
+                types, simulationParameters, new int[]{numberOfDroplets}, null, countDropletsEvent);
     }
 
     private CLEvent fillCells(CLBuffer<Float> positions, CLEvent... events) {
@@ -228,36 +225,27 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent performSingleStep(CLEvent... events) {
         CLEvent forcesEvent = calculateForces(events);
-        
-            Pointer<Float> read = forces0.read(queue, forcesEvent);
-            System.out.println("f " + Arrays.toString(read.getFloats()));
-            read.release();
         CLEvent newPositionsAndVelocitiesEvent = calculateNewPositionsAndVelocities(forcesEvent);
-        
-            read = forces0.read(queue, newPositionsAndVelocitiesEvent);
-            System.out.println("f " + Arrays.toString(read.getFloats()));
-            read.release();
-            
         CLEvent cellsEvent = fillCells(positions, newPositionsAndVelocitiesEvent);
         return cellsEvent;
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, forces, forces0, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, velocities0, forces, forces0, types,
                 cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
                 step, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
-        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces, forces0, types, pairParameters,
-                dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
+        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, velocities0, forces, energy, 
+                types, pairParameters, dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
 
     private void printAverageVelocity(CLEvent... events) {      
         if(!shouldPrintAvgVelocity) {
             return;
         }
-        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities,
+        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities, velocities0,
                 LocalSize.ofFloatArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
                 simulationParameters, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
         Pointer<Float> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);
@@ -285,7 +273,7 @@ public class GpuKernelSimulation extends Simulation {
         float[] ek = new float[numberOfCellKinds];
         Pointer<Float> partialEnergyPointer = Pointer.allocateFloats(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, velocities, forces,
+            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, energy,
                     LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
                     simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
             partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
