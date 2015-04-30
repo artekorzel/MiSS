@@ -180,13 +180,8 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                     dissipativeForce -= gamma * weightDValue * normalizedPositionVector
                             * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
 
-                    
-                    if(dropletCellId == cellId) {
-                    randomForce += sigma * weightRValue * normalizedPositionVector;
-//                            * pairRandom(dropletId, neighbourId, step);
-                    } else {
-                        randomForce -= sigma * weightRValue * normalizedPositionVector;
-                    }
+                    randomForce += sigma * weightRValue * normalizedPositionVector
+                            * pairRandom(dropletId, neighbourId, step);
                             
                     ++noOfNeighbours;
                 }
@@ -251,7 +246,7 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
     velocities[dropletId] = dropletVelocity;
     velocities0[dropletId] = 2 * dropletVelocity - dropletVelocityBuf;
         
-    if(dropletId == 0) {
+    /*if(dropletId == 0) {
         printf("v %e %e %e\n", 
         velocities[dropletId].x, velocities[dropletId].y, velocities[dropletId].z);
         
@@ -263,7 +258,7 @@ kernel void calculateNewPositionsAndVelocities(global float3* positions, global 
         
         printf("xxx %e %e %e\n", 
         newPosition.x,newPosition.y,newPosition.z);
-    }
+    }*/
 }
 
 kernel void generateTube(global float3* vector, global int* types, global int* states, 
