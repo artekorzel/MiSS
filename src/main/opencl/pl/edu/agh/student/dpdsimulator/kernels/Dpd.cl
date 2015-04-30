@@ -129,7 +129,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
         
     if(!simulationParams.shouldSimulateVesselDroplets
             && dropletType == 0) {
-        return (float3)(0.0, 0.0, 0.0);
+        return (float3)(0.0f, 0.0f, 0.0f);
     }
     
     float boxSizeX = simulationParams.boxSizeX;
@@ -141,9 +141,9 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
     int maxDropletsPerCell = simulationParams.maxDropletsPerCell;
     int numberOfTypes = simulationParams.numberOfTypes;
         
-    float3 conservativeForce = (float3)(0.0, 0.0, 0.0);
-    float3 dissipativeForce = (float3)(0.0, 0.0, 0.0);
-    float3 randomForce = (float3)(0.0, 0.0, 0.0);
+    float3 conservativeForce = (float3)(0.0f, 0.0f, 0.0f);
+    float3 dissipativeForce = (float3)(0.0f, 0.0f, 0.0f);
+    float3 randomForce = (float3)(0.0f, 0.0f, 0.0f);
     
     float3 dropletPosition = positions[dropletId];
     float3 dropletVelocity = velocities0[dropletId];    
@@ -372,9 +372,9 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
     float xs, ys, zs;
     float x, y, z;
     float xmin, xmax, ymin, ymax, zmin, zmax;
-    float xb[4] = {0.5, -0.5, 0.5, -0.5};
-    float yb[4] = {0.5, -0.5,-0.5,  0.5};
-    float zb[4] = {0.5,  0.5,-0.5, -0.5};
+    float xb[4] = {0.5f, -0.5f, 0.5f, -0.5f};
+    float yb[4] = {0.5f, -0.5f,-0.5f,  0.5f};
+    float zb[4] = {0.5f,  0.5f,-0.5f, -0.5f};
     
     float boxSizeX = simulationParams.boxSizeX;
     float boxSizeY = simulationParams.boxSizeY;
@@ -398,9 +398,9 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
     facty = 0.5f;
     factz = 0.5f;
 
-    shftx = 2.0 * factx;
-    shfty = 2.0 * facty;
-    shftz = 2.0 * factz;
+    shftx = 2.0f * factx;
+    shfty = 2.0f * facty;
+    shftz = 2.0f * factz;
     
     i = 0;
 
