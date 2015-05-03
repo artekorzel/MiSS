@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=1000
+numberOfSteps=2000
 deltaTime=1e-13f
 cellsXAxis=16
 cellsYAxis=16
@@ -29,12 +29,12 @@ cutoffRadius(0,0)=1.5874f
 cutoffRadius(0,1)=1.5874f
 cutoffRadius(1,1)=1.5874f
 pi(0,0)=5.18e+07f
-pi(0,1)=1.50e+08f
-#pi(0,1)=5.18e+07f
+#pi(0,1)=1.50e+08f
+pi(0,1)=5.18e+07f
 pi(1,1)=5.18e+07f
 gamma(0,0)=10f
-gamma(0,1)=30f
-#gamma(0,1)=10f
+#gamma(0,1)=30f
+gamma(0,1)=10f
 gamma(1,1)=10f
 sigma(0,0)=1e-4f
 #sigma(0,1)=2e-4f

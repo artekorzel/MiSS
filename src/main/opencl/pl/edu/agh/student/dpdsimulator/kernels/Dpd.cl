@@ -39,34 +39,51 @@ float3 normalizePosition(float3 vector, float boxSizeX, float boxSizeY, float bo
     return fmod(fmod(vector + changeVector, 2.0f * changeVector) + 2.0f * changeVector, 2.0f * changeVector) - changeVector;
 }
 
-int calculateHash(int d1, int d2) {    
-    int i1, i2;
-    if(d1 <= d2) {
-        i1 = d1;
-        i2 = d2;
+global int* calculateHash(global int* d1, global int* d2) {    
+    if(*d1 <= *d2) {
+        return d1;
     } else {
-        i1 = d2;
-        i2 = d1;
+        return d2;
     }
-    return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
 // <0; 1)
-float rand(int* seed, int step) {
+float rand(int* seed) {
+/*
     long const a = 16807L;
     long const m = 2147483647L;
-    *seed = (*seed * a * step) % m;
+    *seed = (*seed * a) % m;
     float randomValue = (float)(*seed) / m;
+    if(randomValue < 0) {
+        return -randomValue;
+    }
+    return randomValue;*/
+
+    int    iy, ix;
+    float zvar, fl, p;
+//
+    zvar = *seed;
+    ix   = zvar*65539.0f / 2147483648.0f;
+    iy   = zvar*65539.0f - ix * 2147483648.0f;
+    fl   = iy;
+    *seed   = iy;
+    return fl * 0.4656613e-09f;
+}
+float rand2(global int* seed, global int* seed2) {    
+    global int* smaller = calculateHash(seed, seed2);
+    long const a = 16807L;
+    long const m = 2147483647L;
+    *smaller = (*smaller * a) % m;
+    float randomValue = (float)(*smaller) / m;
     if(randomValue < 0) {
         return -randomValue;
     }
     return randomValue;
 }
-
 // <-1; 1>
-float pairRandom(int dropletId, int neighbourId, int step) {
-    int seed = calculateHash(dropletId, neighbourId);
-    return 2 * rand(&seed, step) - 1;
+float pairRandom(int dropletId, int neighbourId, global int *seed, global int *seed2) {
+    //int hash = calculateHash(dropletId, neighbourId);
+    return 2 * rand2(seed, seed2) - 1;
 }
 
 int calculateCellId(float3 position, float boxSizeX, float boxSizeY, float boxSizeZ) {
@@ -123,7 +140,7 @@ float3 getNeighbourPosition(global float3* positions, int3 dropletCellCoordinate
 
 float3 calculateForce(global float3* positions, global float3* velocities, global float3* velocities0, global int* types, 
         global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        SimulationParameters simulationParams, int dropletId, int step, global float* forces0) {
+        SimulationParameters simulationParams, int dropletId, int step, global float* forces0, global int* states) {
             
     int dropletType = types[dropletId];
         
@@ -181,8 +198,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
                             * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
 
                     randomForce += sigma * weightRValue * normalizedPositionVector
-                            * pairRandom(dropletId, neighbourId, step);
-                            
+                            * pairRandom(dropletId, neighbourId, &states[dropletId], &states[neighbourId]);
                     ++noOfNeighbours;
                 }
             }
@@ -203,7 +219,7 @@ float3 calculateForce(global float3* positions, global float3* velocities, globa
 
 kernel void calculateForces(global float3* positions, global float3* velocities, global float3* velocities0, global float3* forces, 
         global float* forces0, global int* types, global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, 
-        constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters, int step) {
+        constant DropletParameters* dropletParams, constant SimulationParameters* simulationParameters, int step, global int* states) {
 
     SimulationParameters simulationParams = simulationParameters[0];
 
@@ -213,7 +229,7 @@ kernel void calculateForces(global float3* positions, global float3* velocities,
     }
     
     forces[dropletId] = calculateForce(positions, velocities, velocities0, types, cells, 
-            cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step, forces0);
+            cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step, forces0, states);
 }
 
 kernel void calculateNewPositionsAndVelocities(global float3* positions, global float3* velocities,
@@ -294,7 +310,7 @@ kernel void generateTube(global float3* vector, global int* types, global int* s
     if (distanceFromY >= simulationParams.radiusIn) {
         types[dropletId] = 0;
     } else {
-        float randomNum = rand(&seed, 1);
+        float randomNum = rand(&seed);
         types[dropletId] = (int)(randomNum / (1.0f / (simulationParams.numberOfTypes - 1))) + 1;               
     }
         
@@ -351,7 +367,7 @@ kernel void generateRandomPositions(global float3* vector, global int* types, gl
     
     int seed = states[dropletId];   
     float interval = 1.0f / simulationParams.numberOfTypes;
-    float randomNum = rand(&seed, 1);
+    float randomNum = rand(&seed);
     types[dropletId] = (int)(randomNum / interval);
 
     states[dropletId] = seed;
@@ -419,7 +435,7 @@ kernel void generateBoryczko(global float3* vector, global int* types, global in
                    vector[i].z = zs - boxSizeZ;
                 
                    seed = states[i];     
-                   randomNum = rand(&seed, 1);
+                   randomNum = rand(&seed);
                    types[i] = (int)(randomNum / interval);
                    states[i] = seed;
                    i++;

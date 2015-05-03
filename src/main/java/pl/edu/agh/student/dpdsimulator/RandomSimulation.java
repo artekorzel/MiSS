@@ -20,13 +20,13 @@ public class RandomSimulation {
         
         RandomCL kernel = new RandomCL(context);
         
-        float[] aaa = new float[]{1,2,3,0,3,1,2,0,2,3,1,0};
-        CLBuffer<Float> in = context.createFloatBuffer(CLMem.Usage.InputOutput, Pointer.pointerToFloats(aaa));
-        CLBuffer<Float> out = context.createFloatBuffer(CLMem.Usage.InputOutput, 4);
+        CLBuffer<Float> out = context.createFloatBuffer(CLMem.Usage.InputOutput, 100);
         
-        CLEvent evt = kernel.reduction(queue, in, LocalSize.ofFloatArray(4), out, 12, new int[]{8}, new int[]{4});
+        CLEvent evt = kernel.random(queue, out, 100, new int[]{100}, null);
         final Pointer<Float> read = out.read(queue, evt);
         
-        System.out.println(Arrays.toString(read.getFloats()));
+        for(int i = 0; i < 100; i++){
+            System.out.println(read.get(i));
+        }
     }
 }

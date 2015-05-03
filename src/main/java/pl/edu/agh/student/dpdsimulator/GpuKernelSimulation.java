@@ -233,7 +233,7 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent calculateForces(CLEvent... events) {
         return dpdKernel.calculateForces(queue, positions, velocities, velocities0, forces, forces0, types,
                 cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
-                step, new int[]{numberOfDroplets}, null, events);
+                step, states, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
