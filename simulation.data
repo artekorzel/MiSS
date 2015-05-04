@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=2000
+numberOfSteps=3000
 deltaTime=1e-13f
 cellsXAxis=16
 cellsYAxis=16

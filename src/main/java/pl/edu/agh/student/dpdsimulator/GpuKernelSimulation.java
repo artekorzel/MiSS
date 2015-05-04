@@ -36,20 +36,20 @@ public class GpuKernelSimulation extends Simulation {
     private Dpd dpdKernel;
     private CLBuffer<Integer> cells;
     private CLBuffer<Integer> cellNeighbours;
-    private CLBuffer<Float> positions;
-    private CLBuffer<Float> velocities;
-    private CLBuffer<Float> velocities0;
-    private CLBuffer<Float> forces;
-    private CLBuffer<Float> forces0;
-    private CLBuffer<Float> energy;
+    private CLBuffer<Double> positions;
+    private CLBuffer<Double> velocities;
+    private CLBuffer<Double> velocities0;
+    private CLBuffer<Double> forces;
+    private CLBuffer<Double> forces0;
+    private CLBuffer<Double> energy;
     private CLBuffer<Integer> states;
     private CLBuffer<Integer> types;
     private CLBuffer<Integer> dropletsPerType;
     private CLBuffer<Dpd.SimulationParameters> simulationParameters;
     private CLBuffer<Dpd.DropletParameters> dropletParameters;
     private CLBuffer<Dpd.PairParameters> pairParameters;
-    private CLBuffer<Float> partialEnergy;
-    private CLBuffer<Float> partialAverageVelocity;
+    private CLBuffer<Double> partialEnergy;
+    private CLBuffer<Double> partialAverageVelocity;
     
     @Override
     public void initData() throws Exception {
@@ -60,22 +60,22 @@ public class GpuKernelSimulation extends Simulation {
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
                 numberOfCells * numberOfCellNeighbours);
-        positions = context.createFloatBuffer(CLMem.Usage.InputOutput,
+        positions = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        velocities = context.createFloatBuffer(CLMem.Usage.InputOutput,
+        velocities = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        velocities0 = context.createFloatBuffer(CLMem.Usage.InputOutput,
+        velocities0 = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        forces = context.createFloatBuffer(CLMem.Usage.InputOutput,
+        forces = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
-        forces0 = context.createFloatBuffer(CLMem.Usage.InputOutput,
+        forces0 = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 3 * VECTOR_SIZE);
-        energy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
+        energy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         dropletsPerType = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCellKinds);
-        partialEnergy = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfReductionGroups);
-        partialAverageVelocity = context.createFloatBuffer(CLMem.Usage.InputOutput, 
+        partialEnergy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfReductionGroups);
+        partialAverageVelocity = context.createDoubleBuffer(CLMem.Usage.InputOutput, 
                 numberOfReductionGroups * VECTOR_SIZE);
         
         dpdKernel = new Dpd(context);
@@ -189,7 +189,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> statesPointer
                 = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
         for (int i = 0; i < numberOfDroplets; i++) {
-            statesPointer.set(i, random.nextInt());
+            statesPointer.set(i, random.nextInt(17000));
         }
 
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
@@ -215,7 +215,7 @@ public class GpuKernelSimulation extends Simulation {
                 types, simulationParameters, new int[]{numberOfDroplets}, null, countDropletsEvent);
     }
 
-    private CLEvent fillCells(CLBuffer<Float> positions, CLEvent... events) {
+    private CLEvent fillCells(CLBuffer<Double> positions, CLEvent... events) {
         return dpdKernel.fillCells(queue, cells, positions, simulationParameters, new int[]{numberOfCells}, null, events);
     }
 
@@ -246,10 +246,10 @@ public class GpuKernelSimulation extends Simulation {
             return;
         }
         CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities, velocities0,
-                LocalSize.ofFloatArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
+                LocalSize.ofDoubleArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
                 simulationParameters, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
-        Pointer<Float> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);
-        float avgVelocityX = 0, avgVelocityY = 0, avgVelocityZ = 0;
+        Pointer<Double> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);
+        double avgVelocityX = 0, avgVelocityY = 0, avgVelocityZ = 0;
         for(int i = 0; i < numberOfReductionGroups; ++i) {
             avgVelocityX += avgVelocity.get(i * VECTOR_SIZE);
             avgVelocityY += avgVelocity.get(i * VECTOR_SIZE + 1);
@@ -270,15 +270,15 @@ public class GpuKernelSimulation extends Simulation {
             return;
         }
         System.out.print("Ek=");
-        float[] ek = new float[numberOfCellKinds];
-        Pointer<Float> partialEnergyPointer = Pointer.allocateFloats(numberOfReductionGroups).order(context.getByteOrder());
+        double[] ek = new double[numberOfCellKinds];
+        Pointer<Double> partialEnergyPointer = Pointer.allocateDoubles(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
             CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, energy,
-                    LocalSize.ofFloatArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
+                    LocalSize.ofDoubleArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
                     simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
             partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
             ek[type] = 0;
-            for(float energy : partialEnergyPointer.getFloats()) {
+            for(double energy : partialEnergyPointer.getDoubles()) {
                 ek[type] += energy;
             }
             System.out.print(ek[type] + " ");
@@ -288,8 +288,8 @@ public class GpuKernelSimulation extends Simulation {
         
         System.out.print("T=");
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            float fee = (float) (fe * numberOfDroplets / numberOfDropletsPerType[type]);
-            float temp = (float) (ft * (fee * ek[type]));
+            double fee = (double) (fe * numberOfDroplets / numberOfDropletsPerType[type]);
+            double temp = (double) (ft * (fee * ek[type]));
             System.out.print(temp + " ");
         }
         System.out.println();
@@ -311,8 +311,8 @@ public class GpuKernelSimulation extends Simulation {
         }                
         File resultFile = new File(directoryName, "result" + step + fileExtension);
         try (FileWriter writer = new FileWriter(resultFile)) {
-            Pointer<Float> positionsOut = positions.read(queue, events);
-            Pointer<Float> velocitiesOut = velocities.read(queue, events);
+            Pointer<Double> positionsOut = positions.read(queue, events);
+            Pointer<Double> velocitiesOut = velocities.read(queue, events);
             Pointer<Integer> typesOut = types.read(queue, events);
             writer.write(header);
             for (int i = 0; i < numberOfDroplets; i++) {
@@ -340,25 +340,25 @@ public class GpuKernelSimulation extends Simulation {
         }
         
         final double sliceSize = cellRadius;
-        Pointer<Float> positionsPointer = positions.read(queue, events);
+        Pointer<Double> positionsPointer = positions.read(queue, events);
         Set[] buckets = new Set[(int)Math.ceil(2 * boxSizeX / sliceSize)];
         for(int i = 0; i < buckets.length; ++i) {
             buckets[i] = new HashSet();
         }
         
         for (int i = 0; i < numberOfDroplets; i++) {
-            float x = positionsPointer.get(i * VECTOR_SIZE);
-            float y = positionsPointer.get(i * VECTOR_SIZE + 1);
-            float z = positionsPointer.get(i * VECTOR_SIZE + 2);
+            double x = positionsPointer.get(i * VECTOR_SIZE);
+            double y = positionsPointer.get(i * VECTOR_SIZE + 1);
+            double z = positionsPointer.get(i * VECTOR_SIZE + 2);
             if(Math.abs(x) <= sliceSize && Math.abs(y) <= sliceSize) {
                 buckets[(int)((z + boxSizeX)/sliceSize)].add(i);
             }
         }
         
-        Pointer<Float> velocitiesPointer = velocities.read(queue, events);
-        float[] meanVels = new float[buckets.length];
+        Pointer<Double> velocitiesPointer = velocities.read(queue, events);
+        double[] meanVels = new double[buckets.length];
         for(int i = 0; i < buckets.length; ++i) {
-            float velSum = 0f;
+            double velSum = 0f;
             for(Object v : buckets[i]) {
                 int index = (Integer) v;
                 velSum += velocitiesPointer.get(index * VECTOR_SIZE + 1);

@@ -1,12 +1,13 @@
 float rand(int* seed, int step) {
-    long const a = 16807L;
-    long const m = 2147483647L;
-    *seed = (*seed * a * step) % m;
-    float randomValue = (float)(*seed) / m;
-    if(randomValue < 0) {
-        return -randomValue;
-    }
-    return randomValue;
+    int    iy, ix;
+    float zvar, fl, p;
+//
+    zvar = *seed;
+    ix   = zvar*65539.0f / 2147483648.0f;
+    iy   = zvar*65539.0f - ix * 2147483648.0f;
+    fl   = iy;
+    *seed   = iy;
+    return fl * 0.4656613e-09f;
 }
 
 uint MWC64X(uint2 *state)
