@@ -32,9 +32,9 @@ public abstract class Simulation {
             + "# symbol[5] = \"VZ\"\n"
             + "# symbol[6] = \"T\"\n"
             + "#\n"
-            + "# type[3] = float\n"
-            + "# type[4] = float\n"
-            + "# type[5] = float \n"
+            + "# type[3] = double\n"
+            + "# type[4] = double\n"
+            + "# type[5] = double \n"
             + "# type[6] = int\n"
             + "\n";
     public static String psiHeaderEnd = " 2694 115001\n"
@@ -43,18 +43,18 @@ public abstract class Simulation {
             + "0.00 0.00 1.00\n\n";
 
     public static int numberOfSteps;
-    public static float deltaTime;
+    public static double deltaTime;
 
-    public static float boxSizeX;
-    public static float boxSizeY;
-    public static float boxSizeZ;
-    public static float radiusIn;
+    public static double boxSizeX;
+    public static double boxSizeY;
+    public static double boxSizeZ;
+    public static double radiusIn;
 
     public static int cellsXAxis;
     public static int cellsYAxis;
     public static int cellsZAxis;
-    public static float cellRadius;
-    public static float averageDropletDistance;
+    public static double cellRadius;
+    public static double averageDropletDistance;
 
     public static int numberOfCells;
     public static int numberOfDroplets;
@@ -69,17 +69,17 @@ public abstract class Simulation {
     public static boolean shouldSimulateVesselDroplets;
     public static String resultsDirectoryBase;
     public static int stepDumpThreshold;
-    public static float accelerationVesselPart;
-    public static float accelerationValue;
+    public static double accelerationVesselPart;
+    public static double accelerationValue;
     public static int accelerationVeselSteps;
 
     public static boolean generateRandomPositions;
 
-    public static float[] mass;
-    public static float[][] cutOffRadius;
-    public static float[][] pi;
-    public static float[][] gamma;
-    public static float[][] sigma;
+    public static double[] mass;
+    public static double[][] cutOffRadius;
+    public static double[][] pi;
+    public static double[][] gamma;
+    public static double[][] sigma;
     
     public static double fe;
     public static double ft;
@@ -91,13 +91,13 @@ public abstract class Simulation {
 
     public abstract void performSimulation() throws Exception;
 
-    protected Dpd.DropletParameters createDropletParameter(float mass) {
+    protected Dpd.DropletParameters createDropletParameter(double mass) {
         Dpd.DropletParameters dropletParameter = new Dpd.DropletParameters();
         dropletParameter.mass(mass);
         return dropletParameter;
     }
 
-    protected Dpd.PairParameters createPairParameter(float cutoffRadius, float pi, float gamma, float sigma) {
+    protected Dpd.PairParameters createPairParameter(double cutoffRadius, double pi, double gamma, double sigma) {
         Dpd.PairParameters pairParameter = new Dpd.PairParameters();
         pairParameter.cutoffRadius(cutoffRadius);
         pairParameter.pi(pi);
@@ -116,53 +116,53 @@ public abstract class Simulation {
             shouldPrintKineticEnergy = Boolean.parseBoolean(prop.getProperty("shouldPrintKineticEnergy"));
             shouldPrintVelocityProfile = Boolean.parseBoolean(prop.getProperty("shouldPrintVelocityProfile"));
             numberOfSteps = Integer.parseInt(prop.getProperty("numberOfSteps"));
-            deltaTime = Float.parseFloat(prop.getProperty("deltaTime"));
+            deltaTime = Double.parseDouble(prop.getProperty("deltaTime"));
             cellsXAxis = Integer.parseInt(prop.getProperty("cellsXAxis"));
             cellsYAxis = Integer.parseInt(prop.getProperty("cellsYAxis"));
             cellsZAxis = Integer.parseInt(prop.getProperty("cellsZAxis"));
-            averageDropletDistance = Float.parseFloat(prop.getProperty("averageDropletDistance"));
+            averageDropletDistance = Double.parseDouble(prop.getProperty("averageDropletDistance"));
             maxDropletsPerCell = Integer.parseInt(prop.getProperty("maxDropletsPerCell"));
             numberOfDroplets = Integer.parseInt(prop.getProperty("numberOfDroplets"));
             numberOfCellKinds = Integer.parseInt(prop.getProperty("numberOfCellKinds"));
             generateRandomPositions = Boolean.parseBoolean(prop.getProperty("generateRandomPositions"));
-            radiusIn = Float.parseFloat(prop.getProperty("radiusIn"));
+            radiusIn = Double.parseDouble(prop.getProperty("radiusIn"));
             resultsDirectoryBase = prop.getProperty("resultsDirectoryBase");
             stepDumpThreshold = Integer.parseInt(prop.getProperty("stepDumpThreshold"));
-            accelerationVesselPart = Float.parseFloat(prop.getProperty("accelerationVesselPart"));
-            accelerationValue = Float.parseFloat(prop.getProperty("accelerationValue"));
+            accelerationVesselPart = Double.parseDouble(prop.getProperty("accelerationVesselPart"));
+            accelerationValue = Double.parseDouble(prop.getProperty("accelerationValue"));
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
 
-            mass = new float[numberOfCellKinds];
+            mass = new double[numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
-                mass[i] = Float.parseFloat(prop.getProperty("mass(" + i + ")"));
+                mass[i] = Double.parseDouble(prop.getProperty("mass(" + i + ")"));
             }
 
-            cutOffRadius = new float[numberOfCellKinds][numberOfCellKinds];
+            cutOffRadius = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    cutOffRadius[i][j] = cutOffRadius[j][i] = Float.parseFloat(prop.getProperty("cutoffRadius(" + i + "," + j + ")"));
+                    cutOffRadius[i][j] = cutOffRadius[j][i] = Double.parseDouble(prop.getProperty("cutoffRadius(" + i + "," + j + ")"));
                 }
             }
 
-            pi = new float[numberOfCellKinds][numberOfCellKinds];
+            pi = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    pi[i][j] = pi[j][i] = Float.parseFloat(prop.getProperty("pi(" + i + "," + j + ")"));
+                    pi[i][j] = pi[j][i] = Double.parseDouble(prop.getProperty("pi(" + i + "," + j + ")"));
                 }
             }
 
-            gamma = new float[numberOfCellKinds][numberOfCellKinds];
+            gamma = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    gamma[i][j] = gamma[j][i] = Float.parseFloat(prop.getProperty("gamma(" + i + "," + j + ")"));
+                    gamma[i][j] = gamma[j][i] = Double.parseDouble(prop.getProperty("gamma(" + i + "," + j + ")"));
                 }
             }
 
-            sigma = new float[numberOfCellKinds][numberOfCellKinds];
+            sigma = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    sigma[i][j] = sigma[j][i] = Float.parseFloat(prop.getProperty("sigma(" + i + "," + j + ")"));
+                    sigma[i][j] = sigma[j][i] = Double.parseDouble(prop.getProperty("sigma(" + i + "," + j + ")"));
                 }
             }
         } catch (Exception e) {
@@ -187,7 +187,7 @@ public abstract class Simulation {
         coef2 = 3.0 / 5.0;
         for (i = 0; i < numberOfCellKinds; i++) {
             if (mass[i] > 1.0e-20) {
-                mass[i] /= 1000.0f * 6.0230e+23f;
+                mass[i] /= 1000.0 * 6.0230e+23;
             }
         }
         
@@ -195,10 +195,10 @@ public abstract class Simulation {
             for (j = 0; j < numberOfCellKinds; j++) {
                 smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
                 rc = cutOffRadius[i][j] / Math.cbrt(Rhod);
-                cutOffRadius[i][j] = (float) rc;
-                gamma[i][j] = (float) (gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc);
-                gamma[i][j] = 10.0f * gamma[i][j];
-                pi[i][j] = (float) (6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc));
+                cutOffRadius[i][j] = (double) rc;
+                gamma[i][j] = (double) (gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc);
+                gamma[i][j] = 10.0 * gamma[i][j];
+                pi[i][j] = (double) (6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc));
             }
         }
         
@@ -208,7 +208,7 @@ public abstract class Simulation {
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
                 smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
-                sigma[i][j] = (float) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
+                sigma[i][j] = (double) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
             }
         }
         
@@ -230,9 +230,9 @@ public abstract class Simulation {
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                pi[i][j] = (float) (pi[i][j] * deltaTime * deltaTime / (ul * mass[0]));
+                pi[i][j] = (double) (pi[i][j] * deltaTime * deltaTime / (ul * mass[0]));
                 gamma[i][j] = gamma[i][j] * deltaTime;
-                sigma[i][j] = (float) ((sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]));
+                sigma[i][j] = (double) ((sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]));
                 System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
             }
         }
@@ -240,11 +240,11 @@ public abstract class Simulation {
         for (i = 1; i < numberOfCellKinds; i++) {
             mass[i] = mass[i] / mass[0];
         }
-        mass[0] = 1.0f;
+        mass[0] = 1.0;
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                cutOffRadius[i][j] = (float) (cutOffRadius[i][j] / ul);
+                cutOffRadius[i][j] = (double) (cutOffRadius[i][j] / ul);
                 System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }
@@ -254,7 +254,7 @@ public abstract class Simulation {
         boxSizeY = cellsYAxis / 2;
         boxSizeZ = cellsZAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
-        deltaTime = 1f;
+        deltaTime = 1;
         System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
         
         System.out.println("Pi " + Arrays.toString(pi[0]));
@@ -262,8 +262,8 @@ public abstract class Simulation {
         System.out.println("Sigma " + Arrays.toString(sigma[0]));
     }
     
-    private float getGreatestCutOffRadius() {
-        float max = 0.0f;
+    private double getGreatestCutOffRadius() {
+        double max = 0.0;
         for(int i = 0; i < numberOfCellKinds; i++){
             max = max > cutOffRadius[0][i] ? max : cutOffRadius[0][i];
         }
