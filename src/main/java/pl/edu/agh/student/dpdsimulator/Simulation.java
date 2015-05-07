@@ -195,10 +195,10 @@ public abstract class Simulation {
             for (j = 0; j < numberOfCellKinds; j++) {
                 smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
                 rc = cutOffRadius[i][j] / Math.cbrt(Rhod);
-                cutOffRadius[i][j] = (double) rc;
-                gamma[i][j] = (double) (gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc);
+                cutOffRadius[i][j] = rc;
+                gamma[i][j] = gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc;
                 gamma[i][j] = 10.0 * gamma[i][j];
-                pi[i][j] = (double) (6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc));
+                pi[i][j] = 6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc);
             }
         }
         
@@ -208,7 +208,7 @@ public abstract class Simulation {
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
                 smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
-                sigma[i][j] = (double) (Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep));
+                sigma[i][j] = Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep);
             }
         }
         
@@ -230,9 +230,9 @@ public abstract class Simulation {
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                pi[i][j] = (double) (pi[i][j] * deltaTime * deltaTime / (ul * mass[0]));
+                pi[i][j] = pi[i][j] * deltaTime * deltaTime / (ul * mass[0]);
                 gamma[i][j] = gamma[i][j] * deltaTime;
-                sigma[i][j] = (double) ((sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]));
+                sigma[i][j] = (sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]);
                 System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
             }
         }
@@ -244,7 +244,7 @@ public abstract class Simulation {
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
-                cutOffRadius[i][j] = (double) (cutOffRadius[i][j] / ul);
+                cutOffRadius[i][j] = cutOffRadius[i][j] / ul;
                 System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }

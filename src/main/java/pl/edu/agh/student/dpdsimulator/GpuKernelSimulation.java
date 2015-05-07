@@ -189,7 +189,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> statesPointer
                 = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
         for (int i = 0; i < numberOfDroplets; i++) {
-            statesPointer.set(i, Math.abs((int)(random.nextGaussian() * 100)));
+            statesPointer.set(i, random.nextInt(Integer.MAX_VALUE));
         }
 
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);
@@ -288,8 +288,8 @@ public class GpuKernelSimulation extends Simulation {
         
         System.out.print("T=");
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            double fee = (double) (fe * numberOfDroplets / numberOfDropletsPerType[type]);
-            double temp = (double) (ft * (fee * ek[type]));
+            double fee = fe * numberOfDroplets / numberOfDropletsPerType[type];
+            double temp = ft * (fee * ek[type]);
             System.out.print(temp + " ");
         }
         System.out.println();
