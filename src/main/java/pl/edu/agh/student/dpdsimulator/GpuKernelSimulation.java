@@ -59,7 +59,7 @@ public class GpuKernelSimulation extends Simulation {
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
-                numberOfCells * numberOfCellNeighbours);
+                numberOfCells * numberOfCellNeighbours);        
         positions = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         velocities = context.createDoubleBuffer(CLMem.Usage.InputOutput,
@@ -189,7 +189,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> statesPointer
                 = Pointer.allocateArray(Integer.class, numberOfDroplets).order(context.getByteOrder());
         for (int i = 0; i < numberOfDroplets; i++) {
-            statesPointer.set(i, random.nextInt(17000));
+            statesPointer.set(i, Math.abs((int)(random.nextGaussian() * 100)));
         }
 
         states = context.createBuffer(CLMem.Usage.InputOutput, statesPointer);

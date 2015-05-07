@@ -39,16 +39,20 @@ double3 normalizePosition(double3 vector, double boxSizeX, double boxSizeY, doub
     return fmod(fmod(vector + changeVector, 2.0 * changeVector) + 2.0 * changeVector, 2.0 * changeVector) - changeVector;
 }
 
-global int* calculateHash(global int* d1, global int* d2) {    
-    if(*d1 <= *d2) {
-        return d1;
+global int calculateHash(int d1, int d2) {    
+    int i1, i2;
+    if(d1 <= d2) {
+        i1 = d1;
+        i2 = d2;
     } else {
-        return d2;
+        i1 = d2;
+        i2 = d1;
     }
+    return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
 }
 
 // <0; 1)
-double rand(int* seed) {
+double rand(int* seed, int step) {
 /*
     long const a = 16807L;
     long const m = 2147483647L;
@@ -59,23 +63,36 @@ double rand(int* seed) {
     }
     return randomValue;*/
 
-    int    iy, ix;
+    int    iy, ix, i;
     double zvar, fl, p;
 //
-    zvar = *seed;
-    ix   = zvar*65539.0 / 2147483648.0;
-    iy   = zvar*65539.0 - ix * 2147483648.0;
-    fl   = iy;
-    *seed   = iy;
+    for(i = 0; i < step; i++){
+        zvar = *seed;
+        ix   = zvar*65539.0 / 2147483648.0;
+        iy   = zvar*65539.0 - ix * 2147483648.0;
+        fl   = iy;
+        *seed   = iy;
+    }
     return fl * 0.4656613e-09;
 }
 
 double rand2(global int* seed, global int* seed2) {      
-    /*global int* smaller = calculateHash(seed, seed2);
+    /*
+    global int* smaller = calculateHash(seed, seed2);
     long const a = 16807L;
     long const m = 2147483647L;
     *smaller = (*smaller * a) % m;
     double randomValue = (double)(*smaller) / m;
+    if(randomValue < 0) {
+        return -randomValue;
+    }
+    return randomValue;
+    */
+    /*
+    long const a = 16807L;
+    long const m = 2147483647L;
+    *seed = (*seed * a) % m;
+    double randomValue = (double)(*seed) / m;
     if(randomValue < 0) {
         return -randomValue;
     }
@@ -108,11 +125,12 @@ double rand2(global int* seed, global int* seed2) {
     fl   = iy;
     *seed   = iy;
     return fl * 0.4656613e-09;
+    
 }
 // <-1; 1>
-double pairRandom(int dropletId, int neighbourId, global int *seed, global int *seed2) {
-    //int hash = calculateHash(dropletId, neighbourId);
-    return 2 * rand2(seed, seed2) - 1;
+double pairRandom(int dropletId, int neighbourId, int step) {
+    int seed = calculateHash(dropletId, neighbourId);
+    return 2 * rand(&seed, step) - 1;
     //return rand2(seed, seed2);
 }
 
@@ -228,7 +246,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
                             * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
 
                     randomForce += sigma * weightRValue * normalizedPositionVector
-                            * pairRandom(dropletId, neighbourId, &states[dropletId], &states[neighbourId]);
+                            * pairRandom(dropletId, neighbourId, step);
                     ++noOfNeighbours;
                 }
             }
@@ -340,7 +358,7 @@ kernel void generateTube(global double3* vector, global int* types, global int* 
     if (distanceFromY >= simulationParams.radiusIn) {
         types[dropletId] = 0;
     } else {
-        double randomNum = rand(&seed);
+        double randomNum = rand(&seed, 1);
         types[dropletId] = (int)(randomNum / (1.0 / (simulationParams.numberOfTypes - 1))) + 1;               
     }
         
@@ -397,7 +415,7 @@ kernel void generateRandomPositions(global double3* vector, global int* types, g
     
     int seed = states[dropletId];   
     double interval = 1.0 / simulationParams.numberOfTypes;
-    double randomNum = rand(&seed);
+    double randomNum = rand(&seed, 1);
     types[dropletId] = (int)(randomNum / interval);
 
     states[dropletId] = seed;
@@ -465,7 +483,7 @@ kernel void generateBoryczko(global double3* vector, global int* types, global i
                    vector[i].z = zs - boxSizeZ;
                 
                    seed = states[i];     
-                   randomNum = rand(&seed);
+                   randomNum = rand(&seed, 1);
                    types[i] = (int)(randomNum / interval);
                    states[i] = seed;
                    i++;
