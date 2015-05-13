@@ -32,9 +32,9 @@ public abstract class Simulation {
             + "# symbol[5] = \"VZ\"\n"
             + "# symbol[6] = \"T\"\n"
             + "#\n"
-            + "# type[3] = double\n"
-            + "# type[4] = double\n"
-            + "# type[5] = double \n"
+            + "# type[3] = float\n"
+            + "# type[4] = float\n"
+            + "# type[5] = float \n"
             + "# type[6] = int\n"
             + "\n";
     public static String psiHeaderEnd = " 2694 115001\n"

@@ -204,7 +204,7 @@ public class GpuKernelSimulation extends Simulation {
 //                states, simulationParameters, new int[]{numberOfDroplets}, null);
         } else {
             generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
-                states, simulationParameters, new int[]{numberOfDroplets}, null);        
+                states, simulationParameters, new int[]{1}, null);        
         }
         CLEvent countDropletsEvent = dpdKernel.countDropletsPerType(queue, types, dropletsPerType, 
                 simulationParameters, new int[]{numberOfCellKinds}, null, generatePositionsEvent);
