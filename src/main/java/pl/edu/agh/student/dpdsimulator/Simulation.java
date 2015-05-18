@@ -162,7 +162,7 @@ public abstract class Simulation {
             sigma = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    sigma[i][j] = sigma[j][i] = Double.parseDouble(prop.getProperty("sigma(" + i + "," + j + ")"));
+                    sigma[i][j] = sigma[j][i] = 0.0;
                 }
             }
         } catch (Exception e) {
