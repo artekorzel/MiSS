@@ -1,5 +1,5 @@
 #INIT DATA
-numberOfSteps=101
+numberOfSteps=300
 deltaTime=1e-13
 cellsXAxis=16
 cellsYAxis=40
@@ -18,7 +18,7 @@ resultsDirectoryBase=../results_
 stepDumpThreshold=100
 accelerationVesselPart=0.2
 accelerationValue=0.000000008
-accelerationVeselSteps=0
+accelerationVeselSteps=100000
 shouldSimulateVesselDroplets=true
 
 #SIMULATION DATA
@@ -28,9 +28,9 @@ mass(1)=1000
 cutoffRadius(0,0)=1.5874
 cutoffRadius(0,1)=1.5874
 cutoffRadius(1,1)=1.5874
-pi(0,0)=5e+7
-pi(0,1)=1e+8
-pi(1,1)=5e+7
-gamma(0,0)=5
-gamma(0,1)=15
+pi(0,0)=5.18e+7
+pi(0,1)=1.e+10
+pi(1,1)=5.18e+7
+gamma(0,0)=10
+gamma(0,1)=30
 gamma(1,1)=10
