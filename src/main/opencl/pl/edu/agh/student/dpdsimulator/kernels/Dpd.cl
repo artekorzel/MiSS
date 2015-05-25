@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
 typedef struct SimulationParameters {
     double boxSizeX;
     double boxSizeY;

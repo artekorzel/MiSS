@@ -53,7 +53,7 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData() throws Exception {
-        context = JavaCL.createContext(null, JavaCL.getBestDevice());
+        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
         
