@@ -549,10 +549,10 @@ kernel void generateVelocities(global double3* velocities, global double3* veloc
     }
     
     velocities[dropletId].x = 0;
-    velocities[dropletId].y = 0.0000025;
+    velocities[dropletId].y = 0.000002;
     velocities[dropletId].z = 0;
     velocities0[dropletId].x = 0;
-    velocities0[dropletId].y = 0.0000025;
+    velocities0[dropletId].y = 0.000002;
     velocities0[dropletId].z = 0;
     forces[dropletId] = 0;
     energy[dropletId] = 0;
