@@ -53,7 +53,7 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData() throws Exception {
-        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
+        context = JavaCL.createContext(null, JavaCL.getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
         
@@ -246,7 +246,7 @@ public class GpuKernelSimulation extends Simulation {
         return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, velocities0, forces, energy, 
                 types, pairParameters, dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
-    
+
     private void printAverageVelocity(CLEvent... events) {      
         if(!shouldPrintAvgVelocity) {
             return;
