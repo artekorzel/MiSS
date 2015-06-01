@@ -73,8 +73,8 @@ public class GpuKernelSimulation extends Simulation {
                 3 * VECTOR_SIZE);
         energy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
-        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
-        randoms = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfDroplets * numberOfDroplets);
+        types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);        
+        randoms = context.createFloatBuffer(CLMem.Usage.InputOutput,  (numberOfDroplets + 1) * (numberOfDroplets / 2));
         dropletsPerType = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCellKinds);
         partialEnergy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfReductionGroups);
         partialAverageVelocity = context.createDoubleBuffer(CLMem.Usage.InputOutput, 
@@ -244,16 +244,15 @@ public class GpuKernelSimulation extends Simulation {
                 types, pairParameters, dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
 
-    private void fillRandoms(){
+    private void fillRandoms(){        
         Pointer<Float> randomsPointer
-                = Pointer.allocateArray(Float.class, numberOfDroplets * numberOfDroplets).order(context.getByteOrder());
+                = Pointer.allocateArray(Float.class, (numberOfDroplets + 1) * (numberOfDroplets / 2)).order(context.getByteOrder());
         for(int i = 0; i < numberOfDroplets; i++){
-            for(int j = i; j < numberOfDroplets; j++){
+            for(int j = i; j < numberOfDroplets; j++){                
                 float rand = random.nextFloat() * 2 - 1.0f;
-                randomsPointer.set(i * numberOfDroplets + j, rand);
-                randomsPointer.set(j * numberOfDroplets + i, rand);
+                randomsPointer.set(numberOfDroplets * i + j - (i * (i + 1))/2, rand);                                
             }
-        }
+        }        
         randoms.release();
         randoms = context.createBuffer(CLMem.Usage.InputOutput, randomsPointer);
         randomsPointer.release();

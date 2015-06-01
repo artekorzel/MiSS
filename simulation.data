@@ -1,13 +1,13 @@
 #INIT DATA
-numberOfSteps=1000
+numberOfSteps=500
 deltaTime=1e-13
-cellsXAxis=8
+cellsXAxis=10
 cellsYAxis=40
-cellsZAxis=8
+cellsZAxis=10
 averageDropletDistance=0.63
 radiusIn=2.24
 maxDropletsPerCell=21
-numberOfDroplets=10240
+numberOfDroplets=16000
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
@@ -29,7 +29,7 @@ cutoffRadius(0,0)=1.5874
 cutoffRadius(0,1)=1.5874
 cutoffRadius(1,1)=1.5874
 pi(0,0)=5.18e+7
-pi(0,1)=1.5e+8
+pi(0,1)=3e+8
 pi(1,1)=5.18e+7
 gamma(0,0)=10
 gamma(0,1)=30

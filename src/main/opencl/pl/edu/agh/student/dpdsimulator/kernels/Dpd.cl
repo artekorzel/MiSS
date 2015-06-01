@@ -247,8 +247,17 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
                     dissipativeForce -= gamma * weightDValue * normalizedPositionVector
                             * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
 
+                    int min, max;
+                    if(dropletId < neighbourId){
+                        min = dropletId;
+                        max = neighbourId;
+                    } else {
+                        min = neighbourId;
+                        max = dropletId;
+                    }
+
                     randomForce += sigma * weightRValue * normalizedPositionVector 
-                        * randoms[dropletId * simulationParams.numberOfDroplets + neighbourId];                            
+                        * randoms[simulationParams.numberOfDroplets * min + max - (min * (min + 1))/2];                        
                     ++noOfNeighbours;
                 }
             }
