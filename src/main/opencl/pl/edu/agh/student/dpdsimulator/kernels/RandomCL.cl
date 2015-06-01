@@ -1,134 +1,112 @@
-float rand(int* seed, int step) {
-    int    iy, ix;
-    float zvar, fl, p;
-//
-    zvar = *seed;
-    ix   = zvar*65539.0f / 2147483648.0f;
-    iy   = zvar*65539.0f - ix * 2147483648.0f;
-    fl   = iy;
-    *seed   = iy;
-    return fl * 0.4656613e-09f;
-}
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-uint MWC64X(uint2 *state)
+ulong MWCAdd(ulong a, ulong b, ulong M)
 {
-    enum { A=4294883355U};
-    uint x=(*state).x, c=(*state).y;  // Unpack the state
-    uint res=x^c;                     // Calculate the result
-    uint hi=mul_hi(x,A);              // Step the RNG
-    x=x*A+c;
-    c=hi+(x<c);
-    *state=(uint2)(x,c);               // Pack the state back up
-    return res;                       // Return the next result
-}
-/*
-Funkcja randomizujaca z rozkladem normalnym na przedziale <-1; 1>
-*/
-float normalRand(float U1, float U2) {
-     float R = -2 * log(U1);
-     float fi = 2 * 3.141592f * U2;
-     float Z1 = sqrt(R) * cos(fi);
-     return Z1;
-     //float Z2 = sqrt(R) * sin(fi);
+    ulong v=a+b;
+    if( (v>=M) || (v<a) )
+            v=v-M;
+    return v;
 }
 
-kernel void random(global float* a, const int size) {
-    int id = get_global_id(0);
-    if (id >= size) {
+ulong MWCMul(ulong a, ulong b, ulong M)
+{	
+    ulong r=0;
+    while(a!=0){
+            if(a&1)
+                    r=MWCAdd(r,b,M);
+            b=MWCAdd(b,b,M);
+            a=a>>1;
+    }
+    return r;
+}
+
+ulong MWCPow(ulong a, ulong e, ulong M)
+{
+    ulong sqr=a, acc=1;
+    while(e!=0){
+            if(e&1)
+                    acc=MWCMul(acc,sqr,M);
+            sqr=MWCMul(sqr,sqr,M);
+            e=e>>1;
+    }
+    return acc;
+}
+
+void MWCStep(uint2 *s)
+{
+    ulong A = 4294883355U;
+    uint X=(*s).x, C=(*s).y;
+
+    uint Xn=A*X+C;
+    uint carry=(uint)(Xn<C);
+    uint Cn=((A * X) >> 32) + carry;  
+
+    (*s).x=Xn;
+    (*s).y=Cn;
+}
+
+void MWCSkip(uint2 *s, ulong distance)
+{
+    ulong A = 4294883355U;
+    ulong M = 9223372036854775807UL;
+    
+    ulong m=MWCPow(A, distance, M);
+    ulong x=(*s).x*A+(*s).y;
+    x=MWCMul(x, m, M);
+    *s = (uint2)((uint)(x/A), (uint)(x%A));
+}
+
+void MWCSeed(uint2 *s, ulong baseOffset, ulong perStreamOffset)
+{
+    ulong A = 4294883355U;
+    ulong M = 9223372036854775807UL;
+    ulong BASEID = 4077358422479273989UL;
+
+    ulong dist=baseOffset + get_global_id(0)*perStreamOffset;
+    ulong m=MWCPow(A, dist, M);
+
+    ulong x=MWCMul(BASEID, m, M);
+    *s = (uint2)((uint)(x/A), (uint)(x%A));
+}
+
+uint MWCNext(uint2 *s)
+{
+    uint res=(*s).x ^ (*s).y;
+    MWCStep(s);
+    return res;
+}
+
+kernel void test(global double* a) {    
+    int dropletId = get_global_id(0);
+    if (dropletId >= 16384) {
         return;
-    }       
-    int seed = 1;
-    a[id] = rand(&seed, id);
-}
-
-typedef struct DropletParameters {
-    float mass;
-    float lambda;
-} DropletParameters;
-
-typedef struct PairParameters {
-    float cutoffRadius;
-    float pi;
-    float sigma;
-    float gamma;
-} PairParameters;
-
-typedef struct Parameters {
-    DropletParameters droplets[3];
-    PairParameters pairs[3][3];
-} Parameters;
-
-kernel void test(global Parameters* params, global float* out) {
-    int i, j;
-    for(i = 0; i < 3; ++i) {
-        for(j = 0; j < 3; ++j) {
-            out[i * 3 + j] = params[0].pairs[i][j].pi;
-        }
-    }
-}
-
-kernel void normalizePosition(global float3* vector, float boxSize, float boxWidth) {
-    float3 changeVector = (float3)(boxSize, boxWidth, boxSize);
-    vector[0] = fmod(fmod(vector[0] + changeVector, 2.0f * changeVector) + 2.0f * changeVector, 2.0f * changeVector) - changeVector;
-}
-
-kernel void dist(global float3* vector, global float3* vector2, global float* res) {
-    res[0] = distance(vector[0], vector2[0]);
-}
-
-kernel void calculateCellId(global int* cellNo, global float3* pos, float cellRadius, float boxSize, float boxWidth) {
-    float3 position = pos[0];
-    cellNo[0] = ((int)((position.x + boxSize) / cellRadius)) + 
-            ((int)(2 * boxSize / cellRadius)) * (((int)((position.y + boxWidth) / cellRadius)) + 
-                    ((int)(2 * boxWidth / cellRadius)) * ((int)((position.z + boxSize) / cellRadius)));
-}
-
-kernel void calculateCellCoordinates(global int3* res, int dropletCellId, float cellRadius, float boxSize, 
-        float boxWidth, int cellsNoXZ, int cellsNoY) {
-    int dropletCellZ = dropletCellId / (cellsNoXZ * cellsNoY);
-    int dropletCellX = dropletCellId - dropletCellZ * cellsNoXZ * cellsNoY;
-    int dropletCellY = dropletCellX / cellsNoXZ;
-    dropletCellX = dropletCellId % cellsNoXZ;
-    res[0] = (int3)(dropletCellX, dropletCellY, dropletCellZ);
-}
-
-kernel void test2(global float* a) {
-    a[0] = (-5) % 5;
-}
-
-
-typedef struct TestStruct {
-    float mass;
-} TestStruct;
-
-kernel void test3(constant TestStruct *aStruct, global float* out) {
-    out[0] = aStruct->mass;
-}
-
-kernel void reduction(global float* data, local float* partialSums, global float* output, int dataLength) {
-
-    int local_id = get_local_id(0);
-    int global_id = get_global_id(0);
-    int global_size = get_global_size(0);
-    int local_size = get_local_size(0);
-    int group_id = get_group_id(0);
-    
-    float localResult = 0;
-    while (global_id < dataLength) {
-        localResult += data[global_id];
-        global_id += global_size;
     }
     
-    partialSums[local_id] = localResult;
-    barrier(CLK_LOCAL_MEM_FENCE);
-    int offset;
-    for(offset = local_size/2; offset > 0; offset >>= 1){
-        if(local_id < offset){
-            partialSums[local_id] += partialSums[local_id + offset];
-        }
-        barrier(CLK_LOCAL_MEM_FENCE);
+    uint2 state;
+    MWCSeed(&state, 0, 16384);
+    int i;
+    for(i = 0; i < 16384; ++i) {
+        a[dropletId*16384+i] = MWCNext(&state) / 2147483647.0 - 1.0;
     }
-    if(local_id == 0){
-        output[group_id] = partialSums[0];
+}
+
+kernel void generateRandomNumbers(global float* vector, int numberOfRandoms, int step) { 
+    int globalId = get_global_id(0);
+    int globalSize = get_global_size(0);
+    if (globalId >= globalSize) {
+        return;
+    }
+    
+    int randomsPerCore = ceil(numberOfRandoms / (double)globalSize);
+    
+    uint2 state;
+    MWCSeed(&state, step * numberOfRandoms, randomsPerCore);
+    int i;
+    for(i = 0; i < randomsPerCore; ++i) {
+        int index = globalId * randomsPerCore + i;
+        if(index < numberOfRandoms) {
+            double randNum = MWCNext(&state) / 2147483647.0 - 1.0;   
+            vector[index] = (float) randNum;
+        }
     }
 }

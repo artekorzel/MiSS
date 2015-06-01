@@ -6,9 +6,7 @@ import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
-import com.nativelibs4java.opencl.LocalSize;
 import java.io.IOException;
-import java.util.Arrays;
 import org.bridj.Pointer;
 import pl.edu.agh.student.dpdsimulator.kernels.RandomCL;
 
@@ -20,12 +18,12 @@ public class RandomSimulation {
         
         RandomCL kernel = new RandomCL(context);
         
-        CLBuffer<Float> out = context.createFloatBuffer(CLMem.Usage.InputOutput, 100);
+        CLBuffer<Float> out = context.createFloatBuffer(CLMem.Usage.InputOutput, 152);
         
-        CLEvent evt = kernel.random(queue, out, 100, new int[]{100}, null);
+        CLEvent evt = kernel.generateRandomNumbers(queue, out, 152, 0, new int[]{30}, null);
         final Pointer<Float> read = out.read(queue, evt);
         
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 152; i++){
             System.out.println(read.get(i));
         }
     }

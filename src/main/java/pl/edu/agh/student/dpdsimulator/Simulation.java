@@ -58,6 +58,7 @@ public abstract class Simulation {
 
     public static int numberOfCells;
     public static int numberOfDroplets;
+    public static int numberOfRandoms;
     public static int maxDropletsPerCell;
     public static int numberOfCellKinds;
 
@@ -132,6 +133,8 @@ public abstract class Simulation {
             accelerationValue = Double.parseDouble(prop.getProperty("accelerationValue"));
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
+            
+            numberOfRandoms = numberOfDroplets * (numberOfDroplets - 1) / 2;
 
             mass = new double[numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
