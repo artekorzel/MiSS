@@ -164,7 +164,8 @@ public class GpuKernelSimulation extends Simulation {
                 .accelerationValue(accelerationValue)
                 .averageDropletDistance(averageDropletDistance)
                 .accelerationVeselSteps(accelerationVeselSteps)
-                .shouldSimulateVesselDroplets(shouldSimulateVesselDroplets);
+                .shouldSimulateVesselDroplets(shouldSimulateVesselDroplets)
+                .initialVelocity(initialVelocity);
     }
 
     private Dpd.DropletParameters[] createDropletParameters() {                

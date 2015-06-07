@@ -73,6 +73,7 @@ public abstract class Simulation {
     public static double accelerationVesselPart;
     public static double accelerationValue;
     public static int accelerationVeselSteps;
+    public static double initialVelocity;
 
     public static boolean generateRandomPositions;
 
@@ -133,6 +134,7 @@ public abstract class Simulation {
             accelerationValue = Double.parseDouble(prop.getProperty("accelerationValue"));
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
+            initialVelocity = Double.parseDouble(prop.getProperty("initialVelocity"));
             
             numberOfRandoms = numberOfDroplets * (numberOfDroplets - 1) / 2;
 

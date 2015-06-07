@@ -20,6 +20,7 @@ typedef struct SimulationParameters {
     int accelerationVeselSteps;
     double averageDropletDistance;
     bool shouldSimulateVesselDroplets;
+    double initialVelocity;
 } SimulationParameters;
 
 typedef struct DropletParameters {
@@ -558,10 +559,10 @@ kernel void generateVelocities(global double3* velocities, global double3* veloc
     }
     
     velocities[dropletId].x = 0;
-    velocities[dropletId].y = 0.000002;
+    velocities[dropletId].y = simulationParams.initialVelocity;
     velocities[dropletId].z = 0;
     velocities0[dropletId].x = 0;
-    velocities0[dropletId].y = 0.000002;
+    velocities0[dropletId].y = simulationParams.initialVelocity;
     velocities0[dropletId].z = 0;
     forces[dropletId] = 0;
     energy[dropletId] = 0;
