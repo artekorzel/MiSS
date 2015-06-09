@@ -74,7 +74,8 @@ public abstract class Simulation {
     public static double accelerationValue;
     public static int accelerationVeselSteps;
     public static double initialVelocity;
-
+    public static double randomForceMultiplier;
+    
     public static boolean generateRandomPositions;
 
     public static double[] mass;
@@ -87,7 +88,7 @@ public abstract class Simulation {
     public static double ft;
     public static double Rhod = 8.44e+26;
     public static double Boltz = 1.3806e-23;
-    public static double tempd = 306.0;
+    public static double tempd = 306.0;    
 
     public abstract void initData() throws Exception;
 
@@ -135,6 +136,10 @@ public abstract class Simulation {
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
             initialVelocity = Double.parseDouble(prop.getProperty("initialVelocity"));
+            randomForceMultiplier = Double.parseDouble(prop.getProperty("randomForceMultiplier"));
+            Rhod = Double.parseDouble(prop.getProperty("rhod"));
+            Boltz = Double.parseDouble(prop.getProperty("boltz")); 
+            tempd = Double.parseDouble(prop.getProperty("tempd"));
             
             numberOfRandoms = numberOfDroplets * (numberOfDroplets - 1) / 2;
 
@@ -213,7 +218,7 @@ public abstract class Simulation {
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
                 smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
-                sigma[i][j] = Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep);
+                sigma[i][j] = randomForceMultiplier * Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep);
             }
         }
         
