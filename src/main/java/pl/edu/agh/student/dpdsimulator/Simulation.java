@@ -2,7 +2,6 @@ package pl.edu.agh.student.dpdsimulator;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Properties;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
@@ -140,6 +139,7 @@ public abstract class Simulation {
             Rhod = Double.parseDouble(prop.getProperty("rhod"));
             Boltz = Double.parseDouble(prop.getProperty("boltz")); 
             tempd = Double.parseDouble(prop.getProperty("tempd"));
+            deltaTime = Double.parseDouble(prop.getProperty("deltaTime"));
             
             numberOfRandoms = numberOfDroplets * (numberOfDroplets - 1) / 2;
 
@@ -172,91 +172,11 @@ public abstract class Simulation {
             sigma = new double[numberOfCellKinds][numberOfCellKinds];
             for (int i = 0; i < numberOfCellKinds; i++) {
                 for (int j = i; j < numberOfCellKinds; j++) {
-                    sigma[i][j] = sigma[j][i] = 0.0;
+                    sigma[i][j] = sigma[j][i] = Double.parseDouble(prop.getProperty("sigma(" + i + "," + j + ")"));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private Properties getProperties(String fileName) throws Exception {
-        Properties prop = new Properties();
-        InputStream inputStream = new FileInputStream(fileName);
-        prop.load(inputStream);
-        return prop;
-    }
-
-    protected void scaleParameters() {        
-        int i, j, ld, ld1;
-        double coef1, coef2, smass, rc, sep;
-        
-        ld = 3;
-        ld1 = 3;
-        coef1 = 2.0 / 7.0;
-        coef2 = 3.0 / 5.0;
-        for (i = 0; i < numberOfCellKinds; i++) {
-            if (mass[i] > 1.0e-20) {
-                mass[i] /= 1000.0 * 6.0230e+23;
-            }
-        }
-        
-        for (i = 0; i < numberOfCellKinds; i++) {
-            for (j = 0; j < numberOfCellKinds; j++) {
-                smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
-                rc = cutOffRadius[i][j] / Math.cbrt(Rhod);
-                cutOffRadius[i][j] = rc;
-                gamma[i][j] = gamma[i][j] * (ld1 * Math.sqrt(Boltz * tempd / smass)) / rc;
-                gamma[i][j] = 10.0 * gamma[i][j];
-                pi[i][j] = 6.0 * 2.0 * pi[i][j] * ld / (Rhod * coef2 * rc);
-            }
-        }
-        
-        cellRadius = getGreatestCutOffRadius();
-        
-        sep = 4.0 * Math.PI * cellRadius * cellRadius * Rhod * cellRadius / 3.0;
-        for (i = 0; i < numberOfCellKinds; i++) {
-            for (j = 0; j < numberOfCellKinds; j++) {
-                smass = 2.0 * mass[i] / (mass[i] + mass[j]) * mass[j];
-                sigma[i][j] = randomForceMultiplier * Math.sqrt(2.0 * Boltz * tempd) * Math.sqrt(gamma[i][j] * smass * sep);
-            }
-        }
-        
-        double ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
-        System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
-        System.out.println(String.format("Scalep nfx %d nfy %d nfz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
-        cellsXAxis = (int) (ul * cellsXAxis / cellRadius);
-        cellsYAxis = (int) (ul * cellsYAxis / cellRadius);
-        cellsZAxis = (int) (ul * cellsZAxis / cellRadius);
-        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
-        
-        ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
-        double ue = mass[0] * ul / deltaTime * ul / deltaTime;
-        System.out.println(String.format("Scalep ue: %e %e %e %e\n", mass[0], ue, ul, deltaTime));
-        
-        fe = ue / numberOfDroplets;
-        ft = 1.0 / (1.5 * Boltz);
-        System.out.println(String.format("Scalep fe: %e ft: %e\n", fe, ft));
-        
-        for (i = 0; i < numberOfCellKinds; i++) {
-            for (j = 0; j < numberOfCellKinds; j++) {
-                pi[i][j] = pi[i][j] * deltaTime * deltaTime / (ul * mass[0]);
-                gamma[i][j] = gamma[i][j] * deltaTime;
-                sigma[i][j] = (sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]);
-                System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
-            }
-        }
-        
-        for (i = 1; i < numberOfCellKinds; i++) {
-            mass[i] = mass[i] / mass[0];
-        }
-        mass[0] = 1.0;
-        
-        for (i = 0; i < numberOfCellKinds; i++) {
-            for (j = 0; j < numberOfCellKinds; j++) {
-                cutOffRadius[i][j] = cutOffRadius[i][j] / ul;
-                System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
-            }
         }
         
         cellRadius = getGreatestCutOffRadius();
@@ -264,12 +184,19 @@ public abstract class Simulation {
         boxSizeY = cellsYAxis / 2;
         boxSizeZ = cellsZAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
-        deltaTime = 1;
         System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
-        
-        System.out.println("Pi " + Arrays.toString(pi[0]));
-        System.out.println("Gamma " + Arrays.toString(gamma[0]));
-        System.out.println("Sigma " + Arrays.toString(sigma[0]));
+                
+        double ul = Math.cbrt(numberOfDroplets / (Rhod * numberOfCells));
+        double ue = mass[0] * ul / deltaTime * ul / deltaTime;
+        fe = ue / numberOfDroplets;
+        ft = 1.0 / (1.5 * Boltz);
+    }
+
+    private Properties getProperties(String fileName) throws Exception {
+        Properties prop = new Properties();
+        InputStream inputStream = new FileInputStream(fileName);
+        prop.load(inputStream);
+        return prop;
     }
     
     private double getGreatestCutOffRadius() {

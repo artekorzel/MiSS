@@ -38,7 +38,6 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Integer> cellNeighbours;
     private CLBuffer<Double> positions;
     private CLBuffer<Double> velocities;
-    private CLBuffer<Double> velocities0;
     private CLBuffer<Double> forces;
     private CLBuffer<Double> energy;
     private CLBuffer<Integer> states;
@@ -63,8 +62,6 @@ public class GpuKernelSimulation extends Simulation {
         positions = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         velocities = context.createDoubleBuffer(CLMem.Usage.InputOutput,
-                numberOfDroplets * VECTOR_SIZE);
-        velocities0 = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         forces = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
@@ -212,7 +209,7 @@ public class GpuKernelSimulation extends Simulation {
         Pointer<Integer> dropletsPerTypePointer = dropletsPerType.read(queue, countDropletsEvent);
         numberOfDropletsPerType = dropletsPerTypePointer.getInts();
         dropletsPerTypePointer.release();
-        return dpdKernel.generateVelocities(queue, velocities, velocities0, forces, energy, states, 
+        return dpdKernel.generateVelocities(queue, velocities, forces, energy, states, 
                 types, simulationParameters, new int[]{numberOfDroplets}, null, countDropletsEvent);
     }
 
@@ -238,13 +235,13 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent calculateForces(CLEvent... events) {
-        return dpdKernel.calculateForces(queue, positions, velocities, velocities0, forces, types,
+        return dpdKernel.calculateForces(queue, positions, velocities, forces, types,
                 cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
                 step, states, randoms, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
-        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, velocities0, forces, energy, 
+        return dpdKernel.calculateNewPositionsAndVelocities(queue, positions, velocities, forces, energy, 
                 types, pairParameters, dropletParameters, simulationParameters, new int[]{numberOfDroplets}, null, events);
     }
 
@@ -252,7 +249,7 @@ public class GpuKernelSimulation extends Simulation {
         if(!shouldPrintAvgVelocity) {
             return;
         }
-        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities, velocities0,
+        CLEvent reductionEvent = dpdKernel.calculateAverageVelocity(queue, velocities,
                 LocalSize.ofDoubleArray(reductionLocalSize * VECTOR_SIZE), partialAverageVelocity, 
                 simulationParameters, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
         Pointer<Double> avgVelocity = partialAverageVelocity.read(queue, reductionEvent);

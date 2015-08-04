@@ -35,7 +35,7 @@ typedef struct PairParameters {
 } PairParameters;
 
 double weightR(double distanceValue, double cutoffRadius) {
-    return 1.0 / distanceValue - 1.0 / cutoffRadius;
+    return 1.0 - distanceValue / cutoffRadius;
 }
 
 double3 normalizePosition(double3 vector, double boxSizeX, double boxSizeY, double boxSizeZ) {
@@ -134,10 +134,10 @@ double rand(int* seed, int step) {
     return fl * 0.4656613e-09;
 }
 
-int calculateCellId(double3 position, double boxSizeX, double boxSizeY, double boxSizeZ) {
-    return ((int)((position.x + boxSizeX))) + 
-            ((int)(2 * boxSizeX)) * (((int)((position.y + boxSizeY))) + 
-                    ((int)(2 * boxSizeY)) * ((int)((position.z + boxSizeZ))));
+int calculateCellId(double3 position, double boxSizeX, double boxSizeY, double boxSizeZ, double cellRadius) {
+    return ((int)((position.x + boxSizeX) / cellRadius)) + 
+            ((int)(2 * boxSizeX / cellRadius)) * (((int)((position.y + boxSizeY) / cellRadius)) + 
+                    ((int)(2 * boxSizeY / cellRadius)) * ((int)((position.z + boxSizeZ) / cellRadius)));
 }
 
 int3 calculateCellCoordinates(int dropletCellId, double boxSizeX, double boxSizeY, 
@@ -186,7 +186,7 @@ double3 getNeighbourPosition(global double3* positions, int3 dropletCellCoordina
     return position;
 }
 
-double3 calculateForce(global double3* positions, global double3* velocities, global double3* velocities0, global int* types, 
+double3 calculateForce(global double3* positions, global double3* velocities, global int* types, 
         global int* cells, global int* cellNeighbours, constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
         SimulationParameters simulationParams, int dropletId, int step, global int* states, global float* randoms) {
             
@@ -197,6 +197,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
         return (double3)(0.0, 0.0, 0.0);
     }
     
+    double cellRadius = simulationParams.cellRadius;
     double boxSizeX = simulationParams.boxSizeX;
     double boxSizeY = simulationParams.boxSizeY;
     double boxSizeZ = simulationParams.boxSizeZ;
@@ -212,8 +213,8 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
     double3 randomForce = (double3)(0.0, 0.0, 0.0);
     
     double3 dropletPosition = positions[dropletId];
-    double3 dropletVelocity = velocities0[dropletId];    
-    int dropletCellId = calculateCellId(dropletPosition, boxSizeX, boxSizeY, boxSizeZ);
+    double3 dropletVelocity = velocities[dropletId];    
+    int dropletCellId = calculateCellId(dropletPosition, boxSizeX, boxSizeY, boxSizeZ, cellRadius);
     int3 dropletCellCoordinates = calculateCellCoordinates(dropletCellId,
             boxSizeX, boxSizeY, boxSizeZ, cellsNoX, cellsNoY, cellsNoZ);
     
@@ -244,7 +245,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
                     conservativeForce += pi * weightRValue * normalizedPositionVector;
 
                     dissipativeForce -= gamma * weightDValue * normalizedPositionVector
-                            * dot(velocities0[neighbourId] - dropletVelocity, normalizedPositionVector);
+                            * dot(velocities[neighbourId] - dropletVelocity, normalizedPositionVector);
                             
                     int i1 = max(dropletId, neighbourId);
                     int i2 = min(dropletId, neighbourId);
@@ -269,7 +270,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
     return force / (noOfNeighbours + 1);
 }
 
-kernel void calculateForces(global double3* positions, global double3* velocities, global double3* velocities0, 
+kernel void calculateForces(global double3* positions, global double3* velocities,
         global double3* forces, global int* types, global int* cells, global int* cellNeighbours, 
         constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
         constant SimulationParameters* simulationParameters, int step, global int* states, global float* randoms) {
@@ -281,12 +282,12 @@ kernel void calculateForces(global double3* positions, global double3* velocitie
         return;
     }
     
-    forces[dropletId] = calculateForce(positions, velocities, velocities0, types, cells, 
+    forces[dropletId] = calculateForce(positions, velocities, types, cells, 
             cellNeighbours, pairParams, dropletParams, simulationParams, dropletId, step, states, randoms);
 }
 
 kernel void calculateNewPositionsAndVelocities(global double3* positions, global double3* velocities,
-        global double3* velocities0, global double3* forces, global double* dropletsEnergy, global int* types,
+        global double3* forces, global double* dropletsEnergy, global int* types,
         constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
         constant SimulationParameters* simulationParameters) {
 
@@ -302,18 +303,15 @@ kernel void calculateNewPositionsAndVelocities(global double3* positions, global
         return;
     }
         
-    double3 dropletForce = forces[dropletId];
-    double3 dropletVelocity = velocities[dropletId] - dropletForce;
-    double3 dropletVelocityBuf = 0.5 * (velocities[dropletId] + dropletVelocity);
+    double deltaTime = simulationParams.deltaTime;
+    double3 dropletVelocity = velocities[dropletId];
     double dropletMass = dropletParams[types[dropletId]].mass;
     
-    dropletsEnergy[dropletId] = 0.5 * length(dropletVelocityBuf) * length(dropletVelocityBuf) / dropletMass;
-
-    double3 newPosition = positions[dropletId] + dropletVelocity / dropletMass;
+    double3 newPosition = positions[dropletId] + dropletVelocity * deltaTime;
     positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSizeX, 
             simulationParams.boxSizeY, simulationParams.boxSizeZ);
-    velocities[dropletId] = dropletVelocity;
-    velocities0[dropletId] = 2 * dropletVelocity - dropletVelocityBuf;
+    velocities[dropletId] = dropletVelocity + deltaTime * forces[dropletId] / dropletMass;
+    dropletsEnergy[dropletId] = 0.5 * length(dropletVelocity) * length(dropletVelocity) * dropletMass;
 }
 
 kernel void generateTube(global double3* vector, global int* types, global int* states, 
@@ -548,7 +546,7 @@ kernel void generateBoryczko(global double3* vector, global int* types, global i
     }
 }
 
-kernel void generateVelocities(global double3* velocities, global double3* velocities0, global double3* forces, 
+kernel void generateVelocities(global double3* velocities, global double3* forces, 
         global double* energy, global int* states, global int* types, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
@@ -561,14 +559,11 @@ kernel void generateVelocities(global double3* velocities, global double3* veloc
     velocities[dropletId].x = 0;
     velocities[dropletId].y = simulationParams.initialVelocity;
     velocities[dropletId].z = 0;
-    velocities0[dropletId].x = 0;
-    velocities0[dropletId].y = simulationParams.initialVelocity;
-    velocities0[dropletId].z = 0;
     forces[dropletId] = 0;
     energy[dropletId] = 0;
 }
 
-kernel void calculateAverageVelocity(global double3* velocities, global double3* velocities0, local double3* partialSums, 
+kernel void calculateAverageVelocity(global double3* velocities, local double3* partialSums, 
         global double3* averageVelocity, constant SimulationParameters* simulationParameters) {
             
     SimulationParameters simulationParams = simulationParameters[0];
@@ -641,6 +636,7 @@ kernel void fillCells(global int* cells, global double3* positions,
         return;
     }
 
+    double cellRadius = simulationParams.cellRadius;
     double boxSizeX = simulationParams.boxSizeX;
     double boxSizeY = simulationParams.boxSizeY;
     double boxSizeZ = simulationParams.boxSizeZ;
@@ -650,7 +646,7 @@ kernel void fillCells(global int* cells, global double3* positions,
     int dropletId = 0, freeId = 0;
     for(; dropletId < numberOfDroplets; ++dropletId) {
         double3 position = positions[dropletId];
-        int predictedCellId = calculateCellId(position, boxSizeX, boxSizeY, boxSizeZ);
+        int predictedCellId = calculateCellId(position, boxSizeX, boxSizeY, boxSizeZ, cellRadius);
         if(predictedCellId == cellId) {
             cells[maxDropletsPerCell * cellId + freeId++] = dropletId;
         }
