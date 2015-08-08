@@ -262,12 +262,12 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
     if(dropletType != 0 
             && dropletPosition.y < simulationParams.accelerationVesselPart 
             && step < simulationParams.accelerationVeselSteps) {
-        force = conservativeForce + dissipativeForce + randomForce + (double3)(0, -simulationParams.accelerationValue, 0);
+        force = conservativeForce + dissipativeForce + randomForce + (double3)(0, simulationParams.accelerationValue, 0);
     } else {
         force = conservativeForce + dissipativeForce + randomForce;
     }
     
-    return force / (noOfNeighbours + 1);
+    return force;// / (noOfNeighbours + 1);
 }
 
 kernel void calculateForces(global double3* positions, global double3* velocities,
@@ -557,7 +557,7 @@ kernel void generateVelocities(global double3* velocities, global double3* force
     }
     
     velocities[dropletId].x = 0;
-    velocities[dropletId].y = simulationParams.initialVelocity;
+    velocities[dropletId].y = types[dropletId] == 0 ? 0 : simulationParams.initialVelocity;
     velocities[dropletId].z = 0;
     forces[dropletId] = 0;
     energy[dropletId] = 0;

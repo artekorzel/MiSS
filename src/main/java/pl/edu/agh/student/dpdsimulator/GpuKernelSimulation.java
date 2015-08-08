@@ -52,7 +52,7 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData() throws Exception {
-        context = JavaCL.createContext(null, JavaCL.getBestDevice());
+        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
         
@@ -285,18 +285,19 @@ public class GpuKernelSimulation extends Simulation {
             for(double energy : partialEnergyPointer.getDoubles()) {
                 ek[type] += energy;
             }
-            System.out.print(ek[type] + " ");
+            System.out.print((ek[type] / numberOfDropletsPerType[type]) + " ");
         }
         System.out.println();
         partialEnergyPointer.release();
         
-        System.out.print("T=");
+        /*System.out.print("T=");
         for(int type = 0; type < numberOfCellKinds; ++type) {
             double fee = fe * numberOfDroplets / numberOfDropletsPerType[type];
             double temp = ft * (fee * ek[type]);
             System.out.print(temp + " ");
         }
         System.out.println();
+        */
     }
 
     private void writeDataFile(CLEvent... events) {
