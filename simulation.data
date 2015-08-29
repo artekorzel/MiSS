@@ -1,6 +1,6 @@
 #INIT DATA
 numberOfSteps=40000
-deltaTime=1
+deltaTime=0.5
 cellsXAxis=10
 cellsYAxis=40
 cellsZAxis=10
@@ -17,13 +17,13 @@ generateRandomPositions=false
 resultsDirectoryBase=../results_
 stepDumpThreshold=1000
 accelerationVesselPart=0.2
-accelerationValue=0.001
+accelerationValue=0.00065
 accelerationVeselSteps=100000
 shouldSimulateVesselDroplets=true
-initialVelocity=0.25
+initialVelocity=0.2
 randomForceMultiplier=0.01
 rhod=8.44e+26 
-boltz=1.3806e-23 
+boltz=1.3806e-23
 tempd=306.0
 
 #SIMULATION DATA
