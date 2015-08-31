@@ -557,15 +557,21 @@ kernel void generateVelocities(global double3* velocities, global double3* veloc
     if (dropletId >= simulationParams.numberOfDroplets) {
         return;
     }
-    
+    double initialVelocity;
+    if(types[dropletId] == 0){
+        initialVelocity = 0;
+    } else {
+        initialVelocity = simulationParams.initialVelocity;
+    }
     velocities[dropletId].x = 0;
-    velocities[dropletId].y = simulationParams.initialVelocity;
+    velocities[dropletId].y = initialVelocity;
     velocities[dropletId].z = 0;
     velocities0[dropletId].x = 0;
-    velocities0[dropletId].y = simulationParams.initialVelocity;
+    velocities0[dropletId].y = initialVelocity;
     velocities0[dropletId].z = 0;
     forces[dropletId] = 0;
     energy[dropletId] = 0;
+
 }
 
 kernel void calculateAverageVelocity(global double3* velocities, global double3* velocities0, local double3* partialSums, 
