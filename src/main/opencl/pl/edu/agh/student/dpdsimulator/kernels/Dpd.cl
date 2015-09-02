@@ -25,6 +25,7 @@ typedef struct SimulationParameters {
 
 typedef struct DropletParameters {
     double mass;
+    double avgTempVelocity;
 } DropletParameters;
 
 typedef struct PairParameters {
@@ -548,13 +549,15 @@ kernel void generateBoryczko(global double3* vector, global int* types, global i
     }
 }
 
-kernel void generateVelocities(global double3* velocities, global double3* velocities0, global double3* forces, 
-        global double* energy, global int* states, global int* types, constant SimulationParameters* simulationParameters) {
+kernel void generateVelocities(global double3* velocities, global double3* velocities0, 
+        global double3* forces, global double* energy, global int* states, global int* types, 
+        constant SimulationParameters* simulationParameters, constant DropletParameters* dropletParams) {
             
     SimulationParameters simulationParams = simulationParameters[0];
 
     int dropletId = get_global_id(0);
-    if (dropletId >= simulationParams.numberOfDroplets) {
+    int numberOfDroplets = simulationParams.numberOfDroplets;
+    if (dropletId >= numberOfDroplets) {
         return;
     }
     double initialVelocity;
@@ -563,12 +566,18 @@ kernel void generateVelocities(global double3* velocities, global double3* veloc
     } else {
         initialVelocity = simulationParams.initialVelocity;
     }
-    velocities[dropletId].x = 0;
-    velocities[dropletId].y = initialVelocity;
-    velocities[dropletId].z = 0;
-    velocities0[dropletId].x = 0;
-    velocities0[dropletId].y = initialVelocity;
-    velocities0[dropletId].z = 0;
+
+    uint2 state;
+    MWCSeed(&state, numberOfDroplets * 3, 3);
+
+    double avgTempVelocity = dropletParams[types[dropletId]].avgTempVelocity;
+
+    velocities[dropletId].x = (MWCNext(&state) / 2147483647.0 - 1.0) * avgTempVelocity;
+    velocities[dropletId].y = initialVelocity + (MWCNext(&state) / 2147483647.0 - 1.0) * avgTempVelocity;
+    velocities[dropletId].z = (MWCNext(&state) / 2147483647.0 - 1.0) * avgTempVelocity;
+    velocities0[dropletId].x = velocities[dropletId].x;
+    velocities0[dropletId].y = velocities[dropletId].y;
+    velocities0[dropletId].z = velocities[dropletId].z;
     forces[dropletId] = 0;
     energy[dropletId] = 0;
 

@@ -171,7 +171,7 @@ public class GpuKernelSimulation extends Simulation {
     private Dpd.DropletParameters[] createDropletParameters() {                
         Dpd.DropletParameters[] dropletParametersArray = new Dpd.DropletParameters[numberOfCellKinds];
         for(int i = 0; i < numberOfCellKinds; i++){                                
-            dropletParametersArray[i] = createDropletParameter(mass[i]);
+            dropletParametersArray[i] = createDropletParameter(mass[i], avgTempVelocity[i]);
         }
         return dropletParametersArray;
     }
@@ -200,9 +200,8 @@ public class GpuKernelSimulation extends Simulation {
     private CLEvent initPositionsAndVelocities() {
         CLEvent generatePositionsEvent;
         if(generateRandomPositions){
-            generatePositionsEvent = dpdKernel.generateBoryczko(queue, positions, types, states, simulationParameters, new int[]{1}, null);
-//            generatePositionsEvent = dpdKernel.generateRandomPositions(queue, positions, types,
-//                states, simulationParameters, new int[]{numberOfDroplets}, null);
+            generatePositionsEvent = dpdKernel.generateBoryczko(queue, positions, types, 
+                    states, simulationParameters, new int[]{1}, null);
         } else {
             generatePositionsEvent = dpdKernel.generateTube(queue, positions, types,
                 states, simulationParameters, new int[]{1}, null);        
@@ -213,7 +212,8 @@ public class GpuKernelSimulation extends Simulation {
         numberOfDropletsPerType = dropletsPerTypePointer.getInts();
         dropletsPerTypePointer.release();
         return dpdKernel.generateVelocities(queue, velocities, velocities0, forces, energy, states, 
-                types, simulationParameters, new int[]{numberOfDroplets}, null, countDropletsEvent);
+                types, simulationParameters, dropletParameters, new int[]{numberOfDroplets}, 
+                null, countDropletsEvent);
     }
 
     private CLEvent fillCells(CLBuffer<Double> positions, CLEvent... events) {

@@ -79,6 +79,7 @@ public abstract class Simulation {
     public static boolean generateRandomPositions;
 
     public static double[] mass;
+    public static double[] avgTempVelocity;
     public static double[][] cutOffRadius;
     public static double[][] pi;
     public static double[][] gamma;
@@ -94,9 +95,10 @@ public abstract class Simulation {
 
     public abstract void performSimulation() throws Exception;
 
-    protected Dpd.DropletParameters createDropletParameter(double mass) {
+    protected Dpd.DropletParameters createDropletParameter(double mass, double avgTempVelocity) {
         Dpd.DropletParameters dropletParameter = new Dpd.DropletParameters();
         dropletParameter.mass(mass);
+        dropletParameter.avgTempVelocity(avgTempVelocity);
         return dropletParameter;
     }
 
@@ -267,9 +269,10 @@ public abstract class Simulation {
         deltaTime = 1;
         System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
         
-        System.out.println("Pi " + Arrays.toString(pi[0]));
-        System.out.println("Gamma " + Arrays.toString(gamma[0]));
-        System.out.println("Sigma " + Arrays.toString(sigma[0]));
+        avgTempVelocity = new double[numberOfCellKinds];
+        for (i = 0; i < numberOfCellKinds; i++) {
+            avgTempVelocity[i] = 2.0 * Math.sqrt(1.5 * Boltz * tempd * mass[i] / ue);
+        }        
     }
     
     private double getGreatestCutOffRadius() {
