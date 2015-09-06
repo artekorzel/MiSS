@@ -36,6 +36,7 @@ public class GpuKernelSimulation extends Simulation {
     private Dpd dpdKernel;
     private CLBuffer<Integer> cells;
     private CLBuffer<Integer> cellNeighbours;
+    private CLBuffer<Double> virial;
     private CLBuffer<Double> positions;
     private CLBuffer<Double> velocities;
     private CLBuffer<Double> velocities0;
@@ -59,7 +60,7 @@ public class GpuKernelSimulation extends Simulation {
         
         cells = context.createIntBuffer(CLMem.Usage.InputOutput, maxDropletsPerCell * numberOfCells);
         cellNeighbours = context.createIntBuffer(CLMem.Usage.InputOutput,
-                numberOfCells * numberOfCellNeighbours);        
+                numberOfCells * numberOfCellNeighbours);
         positions = context.createDoubleBuffer(CLMem.Usage.InputOutput,
                 numberOfDroplets * VECTOR_SIZE);
         velocities = context.createDoubleBuffer(CLMem.Usage.InputOutput,
@@ -130,14 +131,17 @@ public class GpuKernelSimulation extends Simulation {
                 Pointer.allocateArray(Dpd.DropletParameters.class, numberOfCellKinds);
         Pointer<Dpd.PairParameters> pairParametersPointer =
                 Pointer.allocateArray(Dpd.PairParameters.class, numberOfCellKinds * numberOfCellKinds);
+        Pointer<Double> virialPointer = Pointer.allocateDoubles(numberOfCellKinds * numberOfCellKinds);
         
         simulationParametersPointer.set(createSimulationParameter());
         dropletParametersPointer.setArray(createDropletParameters());
         pairParametersPointer.setArray(createPairParameters());
+        virialPointer.setArray(new double[numberOfCellKinds * numberOfCellKinds]);
         
         simulationParameters = context.createBuffer(CLMem.Usage.InputOutput, simulationParametersPointer);
         pairParameters = context.createBuffer(CLMem.Usage.InputOutput, pairParametersPointer);
         dropletParameters = context.createBuffer(CLMem.Usage.InputOutput, dropletParametersPointer);
+        virial = context.createDoubleBuffer(CLMem.Usage.InputOutput, virialPointer);
         
         simulationParametersPointer.release();
         pairParametersPointer.release();
@@ -240,7 +244,7 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent calculateForces(CLEvent... events) {
         return dpdKernel.calculateForces(queue, positions, velocities, velocities0, forces, types,
-                cells, cellNeighbours, pairParameters, dropletParameters, simulationParameters, 
+                cells, cellNeighbours, virial, pairParameters, dropletParameters, simulationParameters, 
                 step, states, randoms, new int[]{numberOfDroplets}, null, events);
     }
 
@@ -276,30 +280,47 @@ public class GpuKernelSimulation extends Simulation {
     private void printKineticEnergy(CLEvent... events) {
         if(!shouldPrintKineticEnergy) {
             return;
+        
         }
-        System.out.print("Ek=");
+        Pointer<Double> virialPointer = Pointer.allocateDoubles(numberOfCellKinds).order(context.getByteOrder());
+        CLEvent event = virial.read(queue, virialPointer, true, events);
+        double[] virialData = virialPointer.getDoubles();
+        virialPointer.release();
+        
         double[] ek = new double[numberOfCellKinds];
+        double[] temp = new double[numberOfCellKinds];
+        double[] pressure = new double[numberOfCellKinds];
         Pointer<Double> partialEnergyPointer = Pointer.allocateDoubles(numberOfReductionGroups).order(context.getByteOrder());
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            CLEvent reductionEvent = dpdKernel.calculateKineticEnergy(queue, energy,
+            event = dpdKernel.calculateKineticEnergy(queue, energy,
                     LocalSize.ofDoubleArray(reductionLocalSize), partialEnergy, types, dropletParameters, 
-                    simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, events);
-            partialEnergy.read(queue, partialEnergyPointer, true, reductionEvent);
+                    simulationParameters, type, new int[]{reductionSize}, new int[]{reductionLocalSize}, event);
+            partialEnergy.read(queue, partialEnergyPointer, true, event);
             ek[type] = 0;
             for(double energy : partialEnergyPointer.getDoubles()) {
                 ek[type] += energy;
             }
-            System.out.print(ek[type] + " ");
+            double fee = fe * numberOfDroplets / numberOfDropletsPerType[type];
+            temp[type] = ft * (fee * ek[type]);
+            pressure[type] = (2.0 / 3.0 * ek[type] - 1.0 / 3.0 
+                    * virialData[type * numberOfCellKinds + type]) * fee * Rhod;
         }
-        System.out.println();
         partialEnergyPointer.release();
         
-        System.out.print("T=");
+        System.out.print("Ek=");
         for(int type = 0; type < numberOfCellKinds; ++type) {
-            double fee = fe * numberOfDroplets / numberOfDropletsPerType[type];
-            double temp = ft * (fee * ek[type]);
-            System.out.print(temp + " ");
+            System.out.print(ek[type] + " ");
         }
+        
+        System.out.print("\nT=");
+        for(int type = 0; type < numberOfCellKinds; ++type) {
+            System.out.print(temp[type] + " ");
+        }
+        
+        System.out.print("\nP=");
+        for(int type = 0; type < numberOfCellKinds; ++type) {
+            System.out.print(pressure[type] + " ");
+        }            
         System.out.println();
     }
 

@@ -2,7 +2,6 @@ package pl.edu.agh.student.dpdsimulator;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Properties;
 import pl.edu.agh.student.dpdsimulator.kernels.Dpd;
 
