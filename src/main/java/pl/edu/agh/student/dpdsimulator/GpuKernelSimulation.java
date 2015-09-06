@@ -282,7 +282,8 @@ public class GpuKernelSimulation extends Simulation {
             return;
         
         }
-        Pointer<Double> virialPointer = Pointer.allocateDoubles(numberOfCellKinds).order(context.getByteOrder());
+        Pointer<Double> virialPointer = Pointer.allocateDoubles(numberOfCellKinds * numberOfCellKinds)
+                .order(context.getByteOrder());
         CLEvent event = virial.read(queue, virialPointer, true, events);
         double[] virialData = virialPointer.getDoubles();
         virialPointer.release();
