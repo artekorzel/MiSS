@@ -417,10 +417,10 @@ kernel void generateRandom(global int* types, global int* states,
         return;
     }
 
-    int seed = states[i];     
+    int seed = states[dropletId];     
     double randomNum = rand(&seed, 1);
-    types[i] = (int)(randomNum / interval);
-    states[i] = seed;
+    types[dropletId] = (int)(randomNum / interval);
+    states[dropletId] = seed;
 }
 
 kernel void generateVelocities(global double3* velocities, global double3* velocities0, 
