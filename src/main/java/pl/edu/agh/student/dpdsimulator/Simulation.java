@@ -78,6 +78,7 @@ public abstract class Simulation {
     public static boolean generateRandomPositions;
 
     public static double[] mass;
+    public static double[] avgTempVelocity;
     public static double[][] cutOffRadius;
     public static double[][] pi;
     public static double[][] gamma;
@@ -177,6 +178,11 @@ public abstract class Simulation {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        
+        avgTempVelocity = new double[numberOfCellKinds];
+        for (int i = 0; i < numberOfCellKinds; i++) {
+            avgTempVelocity[i] = 0.0;
         }
         
         cellRadius = getGreatestCutOffRadius();
