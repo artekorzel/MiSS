@@ -342,9 +342,6 @@ kernel void generateDropletsPositions(global double3* vector,
     int cellsNoY = simulationParams.cellsNoY;
     int cellsNoZ = simulationParams.cellsNoZ;
     
-    double interval = 1.0 / simulationParams.numberOfTypes;
-    double randomNum;
-    
     xmin = 0;
     xmax = boxSizeX * 2;
     ymin = 0;
@@ -417,6 +414,7 @@ kernel void generateRandom(global int* types, global int* states,
         return;
     }
 
+    double interval = 1.0 / simulationParams.numberOfTypes;
     int seed = states[dropletId];     
     double randomNum = rand(&seed, 1);
     types[dropletId] = (int)(randomNum / interval);
