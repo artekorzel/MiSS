@@ -73,7 +73,6 @@ public abstract class Simulation {
     public static double accelerationValue;
     public static int accelerationVeselSteps;
     public static double initialVelocity;
-    public static double randomForceMultiplier;
     
     public static boolean generateRandomPositions;
 
@@ -136,7 +135,6 @@ public abstract class Simulation {
             accelerationVeselSteps = Integer.parseInt(prop.getProperty("accelerationVeselSteps"));
             shouldSimulateVesselDroplets = Boolean.parseBoolean(prop.getProperty("shouldSimulateVesselDroplets"));
             initialVelocity = Double.parseDouble(prop.getProperty("initialVelocity"));
-            randomForceMultiplier = Double.parseDouble(prop.getProperty("randomForceMultiplier"));
             Rhod = Double.parseDouble(prop.getProperty("rhod"));
             Boltz = Double.parseDouble(prop.getProperty("boltz")); 
             tempd = Double.parseDouble(prop.getProperty("tempd"));
@@ -180,11 +178,6 @@ public abstract class Simulation {
             e.printStackTrace();
         }
         
-        avgTempVelocity = new double[numberOfCellKinds];
-        for (int i = 0; i < numberOfCellKinds; i++) {
-            avgTempVelocity[i] = 0.0;
-        }
-        
         cellRadius = getGreatestCutOffRadius();
         boxSizeX = cellsXAxis / 2;
         boxSizeY = cellsYAxis / 2;
@@ -196,6 +189,11 @@ public abstract class Simulation {
         double ue = mass[0] * ul / deltaTime * ul / deltaTime;
         fe = ue / numberOfDroplets;
         ft = 1.0 / (1.5 * Boltz);
+                
+        avgTempVelocity = new double[numberOfCellKinds];
+        for (int i = 0; i < numberOfCellKinds; i++) {
+            avgTempVelocity[i] = 0.0;
+        }
     }
 
     private Properties getProperties(String fileName) throws Exception {
