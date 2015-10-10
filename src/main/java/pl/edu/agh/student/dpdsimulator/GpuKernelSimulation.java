@@ -299,10 +299,11 @@ public class GpuKernelSimulation extends Simulation {
             for(double energy : partialEnergyPointer.getDoubles()) {
                 ek[type] += energy;
             }
-            double fee = fe * numberOfDroplets / numberOfDropletsPerType[type];
-            temp[type] = ft * (fee * ek[type]);
+            double fee = fe / numberOfDropletsPerType[type];
+            ek[type] *= fee;
+            temp[type] = ft * ek[type];
             pressure[type] = (2.0 / 3.0 * ek[type] - 1.0 / 3.0 
-                    * virialData[type * numberOfCellKinds + type]) * fee * Rhod;
+                    * virialData[type * numberOfCellKinds + type] * fee) * Rhod;
         }
         partialEnergyPointer.release();
         

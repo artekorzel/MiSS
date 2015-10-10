@@ -85,9 +85,9 @@ public abstract class Simulation {
     
     public static double fe;
     public static double ft;
-    public static double Rhod = 8.44e+26;
-    public static double Boltz = 1.3806e-23;
-    public static double tempd = 306.0;    
+    public static double Rhod;
+    public static double Boltz;
+    public static double tempd;    
 
     public abstract void initData() throws Exception;
 
@@ -184,10 +184,9 @@ public abstract class Simulation {
         boxSizeZ = cellsZAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
         System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
-                
+
         double ul = Math.cbrt(numberOfDroplets / (Rhod * numberOfCells));
-        double ue = mass[0] * ul / deltaTime * ul / deltaTime;
-        fe = ue / numberOfDroplets;
+        fe = mass[0] * ul / deltaTime * ul / deltaTime;
         ft = 1.0 / (1.5 * Boltz);
                 
         avgTempVelocity = new double[numberOfCellKinds];

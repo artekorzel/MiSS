@@ -1,33 +1,33 @@
 #INIT DATA
-numberOfSteps=10000
+numberOfSteps=300
 deltaTime=0.5
 cellsXAxis=10
-cellsYAxis=10
+cellsYAxis=40
 cellsZAxis=10
 averageDropletDistance=0.63
 radiusIn=4.05
 maxDropletsPerCell=21
-numberOfDroplets=4000
+numberOfDroplets=16000
 shouldStoreCSVFiles=false
 shouldStorePSIFiles=true
 shouldPrintAvgVelocity=false
 shouldPrintKineticEnergy=true
 shouldPrintVelocityProfile=false
-generateRandomPositions=true
+generateRandomPositions=false
 resultsDirectoryBase=../results_
-stepDumpThreshold=1000
-accelerationVesselPart=0
-accelerationValue=0.0
+stepDumpThreshold=1
+accelerationVesselPart=0.2
+accelerationValue=0.00065
 accelerationVeselSteps=100000
 shouldSimulateVesselDroplets=true
-initialVelocity=0
+initialVelocity=0.2
 rhod=8.44e+26
 boltz=1.3806e-23
 tempd=306.0
 
 #SIMULATION DATA
 numberOfCellKinds=2
-mass(0)=1
+mass(0)=1000000
 mass(1)=1
 cutoffRadius(0,0)=1.0
 cutoffRadius(0,1)=1.0

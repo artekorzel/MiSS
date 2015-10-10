@@ -276,7 +276,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
         force = conservativeForce + dissipativeForce + randomForce;
     }
     
-    return force;// / (noOfNeighbours + 1);
+    return force;
 }
 
 kernel void calculateForces(global double3* positions, global double3* velocities,
@@ -320,7 +320,8 @@ kernel void calculateNewPositionsAndVelocities(global double3* positions, global
     positions[dropletId] = normalizePosition(newPosition, simulationParams.boxSizeX, 
             simulationParams.boxSizeY, simulationParams.boxSizeZ);
     velocities[dropletId] = dropletVelocity + deltaTime * forces[dropletId] / dropletMass;
-    dropletsEnergy[dropletId] = 0.5 * length(dropletVelocity) * length(dropletVelocity) * dropletMass;
+    double dropletVelocityLength = length(velocities[dropletId]);
+    dropletsEnergy[dropletId] = 0.5 * dropletVelocityLength * dropletVelocityLength * dropletMass;
 }
 
 kernel void generateDropletsPositions(global double3* vector, 
