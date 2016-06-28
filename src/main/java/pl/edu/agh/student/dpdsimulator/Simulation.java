@@ -224,27 +224,27 @@ public abstract class Simulation {
         }
         
         double ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
-        System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
-        System.out.println(String.format("Scalep nfx %d nfy %d nfz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
+//        System.out.println(String.format("Scalep rcmax %e ul %e\n", cellRadius, ul));
+//        System.out.println(String.format("Scalep nfx %d nfy %d nfz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
         cellsXAxis = (int) (ul * cellsXAxis / cellRadius);
         cellsYAxis = (int) (ul * cellsYAxis / cellRadius);
         cellsZAxis = (int) (ul * cellsZAxis / cellRadius);
-        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
+//        System.out.println(String.format("Scalep ncx %d ncy %d ncz %d\n", cellsXAxis, cellsYAxis, cellsZAxis));
         
         ul = Math.cbrt(numberOfDroplets / (Rhod * cellsXAxis * cellsYAxis * cellsZAxis));
         double ue = mass[0] * ul / deltaTime * ul / deltaTime;
-        System.out.println(String.format("Scalep ue: %e %e %e %e\n", mass[0], ue, ul, deltaTime));
+//        System.out.println(String.format("Scalep ue: %e %e %e %e\n", mass[0], ue, ul, deltaTime));
         
         fe = ue / numberOfDroplets;
         ft = 1.0 / (1.5 * Boltz);
-        System.out.println(String.format("Scalep fe: %e ft: %e\n", fe, ft));
+//        System.out.println(String.format("Scalep fe: %e ft: %e\n", fe, ft));
         
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
                 pi[i][j] = pi[i][j] * deltaTime * deltaTime / (ul * mass[0]);
                 gamma[i][j] = gamma[i][j] * deltaTime;
                 sigma[i][j] = (sigma[i][j] * Math.sqrt(3.0) * deltaTime * Math.sqrt(deltaTime)) / (ul * mass[0]);
-                System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
+//                System.out.println(String.format("SH %g %g %g\n", pi[i][j], gamma[i][j], sigma[i][j]));
             }
         }
         
@@ -256,7 +256,7 @@ public abstract class Simulation {
         for (i = 0; i < numberOfCellKinds; i++) {
             for (j = 0; j < numberOfCellKinds; j++) {
                 cutOffRadius[i][j] = cutOffRadius[i][j] / ul;
-                System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
+//                System.out.println(String.format("rcut : %e\n", cutOffRadius[i][j]));
             }
         }
         
@@ -266,7 +266,7 @@ public abstract class Simulation {
         boxSizeZ = cellsZAxis / 2;
         numberOfCells = cellsXAxis * cellsYAxis * cellsZAxis;
         deltaTime = 1;
-        System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
+//        System.out.println("" + boxSizeX + ", " + boxSizeY + ", " + boxSizeZ + "; " + numberOfDroplets + "; " + numberOfCells);
         
         avgTempVelocity = new double[numberOfCellKinds];
         for (i = 0; i < numberOfCellKinds; i++) {

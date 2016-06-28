@@ -4,6 +4,7 @@ import com.nativelibs4java.opencl.CLBuffer;
 import com.nativelibs4java.opencl.CLContext;
 import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
+import com.nativelibs4java.opencl.CLPlatform;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
 import com.nativelibs4java.opencl.LocalSize;
@@ -54,6 +55,11 @@ public class GpuKernelSimulation extends Simulation {
     
     @Override
     public void initData() throws Exception {
+//        for(CLPlatform platform : JavaCL.listPlatforms()) {
+//            if(platform.getName().startsWith("Intel")) {
+//                context = JavaCL.createContext(null, platform.getBestDevice());
+//            }
+//        }
         context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
@@ -100,7 +106,7 @@ public class GpuKernelSimulation extends Simulation {
         printKineticEnergy(loopEndEvent);
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
-            System.out.println("\nStep: " + step);
+//            System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
             printKineticEnergy(loopEndEvent);
@@ -108,8 +114,9 @@ public class GpuKernelSimulation extends Simulation {
             CLEvent.waitFor(loopEndEvent);
         }
         long endTime = System.nanoTime();
-        System.out.println("\nInit time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
-        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);  
+        System.out.println("Init time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
+        System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);
+        System.out.println();
         if(directoryName != null) {
             copy(new File("simulation.data").toPath(), new File(directoryName + "/simulation.data").toPath(), REPLACE_EXISTING);
         }
