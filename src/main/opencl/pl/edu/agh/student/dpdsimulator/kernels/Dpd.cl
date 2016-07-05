@@ -136,6 +136,25 @@ double rand(int* seed, int step) {
     return fl * 0.4656613e-09;
 }
 
+global int calculateHash(int d1, int d2) {    
+    int i1, i2;
+    if(d1 <= d2) {
+        i1 = d1;
+        i2 = d2;
+    } else {
+        i1 = d2;
+        i2 = d1;
+    }
+    return (i1 + i2) * (i1 + i2 + 1) / 2 + i2;
+}
+
+// <-1; 1>
+double pairRandom(int dropletId, int neighbourId, int step) {
+    int seed = calculateHash(dropletId, neighbourId);
+    return 2 * rand(&seed, 1) - 1;
+    //return rand2(seed, seed2);
+}
+
 int calculateCellId(double3 position, double boxSizeX, double boxSizeY, double boxSizeZ, double cellRadius) {
     return ((int)((position.x + boxSizeX) / cellRadius)) + 
             ((int)(2 * boxSizeX / cellRadius)) * (((int)((position.y + boxSizeY) / cellRadius)) + 
@@ -191,7 +210,7 @@ double3 getNeighbourPosition(global double3* positions, int3 dropletCellCoordina
 double3 calculateForce(global double3* positions, global double3* velocities, global int* types, 
         global int* cells, global int* cellNeighbours, global double* virial, 
         constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        SimulationParameters simulationParams, int dropletId, int step, global int* states, global float* randoms) {
+        SimulationParameters simulationParams, int dropletId, int step, global int* states) {
             
     int dropletType = types[dropletId];
         
@@ -248,7 +267,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
                             
                     int i1 = max(dropletId, neighbourId);
                     int i2 = min(dropletId, neighbourId);
-                    float randNum = randoms[(i1 * (i1 - 1)) / 2 + i2];
+                    float randNum = pairRandom(dropletId, neighbourId, step);
 
                     double conservativeForcePart = pi * weightRValue;
                     double dissipativeForcePart = -gamma * weightDValue
@@ -282,7 +301,7 @@ double3 calculateForce(global double3* positions, global double3* velocities, gl
 kernel void calculateForces(global double3* positions, global double3* velocities,
         global double3* forces, global int* types, global int* cells, global int* cellNeighbours, global double* virial, 
         constant PairParameters* pairParams, constant DropletParameters* dropletParams, 
-        constant SimulationParameters* simulationParameters, int step, global int* states, global float* randoms) {
+        constant SimulationParameters* simulationParameters, int step, global int* states) {
 
     SimulationParameters simulationParams = simulationParameters[0];
 
@@ -292,7 +311,7 @@ kernel void calculateForces(global double3* positions, global double3* velocitie
     }
     
     forces[dropletId] = calculateForce(positions, velocities, types, cells, cellNeighbours, 
-            virial, pairParams, dropletParams, simulationParams, dropletId, step, states, randoms);
+            virial, pairParams, dropletParams, simulationParams, dropletId, step, states);
 }
 
 kernel void calculateNewPositionsAndVelocities(global double3* positions, global double3* velocities,

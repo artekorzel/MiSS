@@ -5,7 +5,6 @@ import com.nativelibs4java.opencl.CLDevice;
 import com.nativelibs4java.opencl.CLPlatform;
 import com.nativelibs4java.opencl.JavaCL;
 import com.nativelibs4java.opencl.CLKernel;
-import com.nativelibs4java.opencl.CLQueue;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;

@@ -4,6 +4,7 @@ import com.nativelibs4java.opencl.CLBuffer;
 import com.nativelibs4java.opencl.CLContext;
 import com.nativelibs4java.opencl.CLEvent;
 import com.nativelibs4java.opencl.CLMem;
+import com.nativelibs4java.opencl.CLPlatform;
 import com.nativelibs4java.opencl.CLQueue;
 import com.nativelibs4java.opencl.JavaCL;
 import com.nativelibs4java.opencl.LocalSize;
@@ -49,11 +50,15 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Dpd.PairParameters> pairParameters;
     private CLBuffer<Double> partialEnergy;
     private CLBuffer<Double> partialAverageVelocity;
-    private CLBuffer<Float> randoms;
     
     @Override
     public void initData() throws Exception {
-        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
+        for(CLPlatform platform : JavaCL.listPlatforms()) {
+            if(platform.getName().startsWith("Intel")) {
+                context = JavaCL.createContext(null, platform.getBestDevice());
+            }
+        }
+//        context = JavaCL.createContext(null, JavaCL.listGPUPoweredPlatforms()[0].getBestDevice());
         queue = context.createDefaultQueue();
         random = new Random();
         
@@ -69,7 +74,6 @@ public class GpuKernelSimulation extends Simulation {
         energy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         states = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
         types = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfDroplets);
-        randoms = context.createFloatBuffer(CLMem.Usage.InputOutput, numberOfRandoms);
         dropletsPerType = context.createIntBuffer(CLMem.Usage.InputOutput, numberOfCellKinds);
         partialEnergy = context.createDoubleBuffer(CLMem.Usage.InputOutput, numberOfReductionGroups);
         partialAverageVelocity = context.createDoubleBuffer(CLMem.Usage.InputOutput, 
@@ -97,7 +101,7 @@ public class GpuKernelSimulation extends Simulation {
         printKineticEnergy(loopEndEvent);
         long endInitTime = System.nanoTime();
         for (step = 1; step <= numberOfSteps; ++step) {
-            System.out.println("\nStep: " + step);
+            //System.out.println("\nStep: " + step);
             loopEndEvent = performSingleStep(loopEndEvent);
             printAverageVelocity(loopEndEvent);
             printKineticEnergy(loopEndEvent);
@@ -237,14 +241,13 @@ public class GpuKernelSimulation extends Simulation {
     }
 
     private CLEvent fillRandoms(CLEvent... events){
-        return dpdKernel.generateRandomNumbers(queue, randoms, simulationParameters, 
-                step, new int[]{1024}, null, events);
+        return events[0];
     }
 
     private CLEvent calculateForces(CLEvent... events) {
         return dpdKernel.calculateForces(queue, positions, velocities, forces, types,
                 cells, cellNeighbours, virial, pairParameters, dropletParameters, simulationParameters, 
-                step, states, randoms, new int[]{numberOfDroplets}, null, events);
+                step, states, new int[]{numberOfDroplets}, null, events);
     }
 
     private CLEvent calculateNewPositionsAndVelocities(CLEvent... events) {
