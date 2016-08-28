@@ -50,6 +50,9 @@ public class GpuKernelSimulation extends Simulation {
     private CLBuffer<Dpd.PairParameters> pairParameters;
     private CLBuffer<Double> partialEnergy;
     private CLBuffer<Double> partialAverageVelocity;
+    private long fillCellsTime;
+    private long forcesTime;
+    private long positionAndVelocitiesTime;
     
     @Override
     public void initData() throws Exception {
@@ -111,6 +114,9 @@ public class GpuKernelSimulation extends Simulation {
         long endTime = System.nanoTime();
         System.out.println("\nInit time: " + (endInitTime - startTime) / NANOS_IN_SECOND);
         System.out.println("Mean step time: " + (endTime - startTime) / NANOS_IN_SECOND / numberOfSteps);  
+        System.out.println("fillCellsTime: " + fillCellsTime / NANOS_IN_SECOND / numberOfSteps);  
+        System.out.println("forcesTime: " + forcesTime / NANOS_IN_SECOND / numberOfSteps);  
+        System.out.println("positionAndVelocitiesTime: " + positionAndVelocitiesTime / NANOS_IN_SECOND / numberOfSteps);  
         if(directoryName != null) {
             copy(new File("simulation.data").toPath(), new File(directoryName + "/simulation.data").toPath(), REPLACE_EXISTING);
         }
@@ -233,9 +239,19 @@ public class GpuKernelSimulation extends Simulation {
 
     private CLEvent performSingleStep(CLEvent... events) {        
         CLEvent randomsEvent = fillRandoms(events);
+        CLEvent.waitFor(randomsEvent);
+        long start = System.nanoTime();
         CLEvent forcesEvent = calculateForces(randomsEvent);
+        CLEvent.waitFor(forcesEvent);
+        forcesTime += System.nanoTime() - start;
+        start = System.nanoTime();
         CLEvent newPositionsAndVelocitiesEvent = calculateNewPositionsAndVelocities(forcesEvent);
+        CLEvent.waitFor(newPositionsAndVelocitiesEvent);
+        positionAndVelocitiesTime += System.nanoTime() - start;
+        start = System.nanoTime();
         CLEvent cellsEvent = fillCells(positions, newPositionsAndVelocitiesEvent);
+        CLEvent.waitFor(cellsEvent);
+        fillCellsTime += System.nanoTime() - start;
         CLEvent resetEvent = resetState(cellsEvent);
         return resetEvent;
     }
